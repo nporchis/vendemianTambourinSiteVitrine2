@@ -37,8 +37,10 @@ Projet Next.js (App Router) unique (voir `plan.md` → Project Structure) :
 - [ ] T001 Initialiser le projet Next.js (App Router, TypeScript strict) avec
       `npx create-next-app@latest`, installer et configurer l'adapter `@opennextjs/cloudflare`
       (`open-next.config.ts`)
-- [ ] T002 [P] Installer et configurer Tailwind CSS (intégration officielle Next.js) et créer
-      `src/styles/globals.css`
+- [ ] T002 [P] Installer et configurer Tailwind CSS v4 (intégration officielle Next.js) et créer
+      `src/styles/globals.css` en important les tokens de
+      `specs/001-front-public-club/design/tokens.css` ; charger Barlow et Barlow Condensed via
+      `next/font/google` (voir `design-system.md`)
 - [ ] T003 [P] Installer Drizzle ORM + `drizzle-kit`, créer `drizzle.config.ts` ciblant un binding
       D1 nommé `DB`
 - [ ] T004 [P] Créer `wrangler.toml` : projet Pages/Workers, binding D1 `DB` (base créée via
@@ -72,11 +74,16 @@ stories
         (datetime, généré serveur à l'insertion, clé de tri pour la pagination par curseur FR-018)
       - `club_info` : `id` (PK fixe, singleton), `history_text` (requis), `values` (requis),
         `team_info` (nullable), `contact_email` (requis, format email), `contact_phone`
-        (nullable), `social_links` (JSON array `{label, url}`, optionnel)
-      - `useful_link` : `id` (UUID, PK), `label` (requis), `url` (requis, valide), `category`
-        (nullable)
-      - `contact_request` : `id` (UUID, PK), `name` (requis), `email` (requis, format email),
-        `message` (requis), `submitted_at` (datetime, généré serveur), `captcha_verified`
+        (nullable), `social_links` (JSON array `{label, url}`, optionnel), `key_figures` (JSON
+        array `{value, label}`, 4 au plus, FR-024)
+      - `board_member` : `id` (UUID, PK), `first_name` (requis), `last_name_initial` (requis, 1
+        caractère), `role` (requis), `sort_order` (integer, requis) (FR-026)
+      - `partner` : `id` (UUID, PK), `name` (requis), `level` (enum `principal | soutien |
+        institutionnel`, requis), `website_url` (nullable), `description` (nullable),
+        `logo_url` (nullable), `sort_order` (integer, requis) (FR-005)
+      - `contact_request` : `id` (UUID, PK), `first_name` (requis), `last_name` (requis), `email`
+        (requis, format email), `subject` (enum `adhesion | partenariat | galerie | presse |
+        autre`, requis, FR-023), `message` (requis), `submitted_at` (datetime, généré serveur), `captcha_verified`
         (boolean, doit être `true` avant tout enregistrement), `rgpd_notice_acknowledged`
         (boolean, doit être `true`), `purge_at` (datetime = `submitted_at` + 12 mois),
         `notification_sent_at` (datetime, nullable — renseigné si l'email de notification a été
@@ -89,14 +96,26 @@ stories
 - [ ] T012 [P] Créer le layout racine `src/app/layout.tsx` (Server Component : HTML sémantique,
       meta, lien d'évitement clavier, structure WCAG AA)
 - [ ] T013 [P] Créer les composants de layout `src/components/layout/Header.tsx` (Server Component :
-      navigation vers les 6 pages publiques principales) et `src/components/layout/Footer.tsx`
-      (ajoute un lien vers `/politique-de-confidentialite`, FR-019, en plus des liens existants)
+      écusson `public/brand/logo-vendemian-tambourin.png` lien vers `/`, navigation Accueil / Le
+      tambourin / Le club / Calendrier / Galerie / Partenaires / Contact avec `aria-current` sur la
+      page courante, FR-027) et `src/components/layout/Footer.tsx` (liens Partenaires, Contact,
+      `/politique-de-confidentialite`, FR-019, FR-027)
+- [ ] T013a [P] Créer `src/components/layout/MobileMenu.tsx` (`"use client"`) : bouton « Menu » (44px)
+      ouvrant un panneau plein écran sombre en `role="dialog"` `aria-modal`, focus piégé, Échap ferme,
+      focus rendu au bouton (FR-010, FR-027, `design-system.md` §5)
+- [ ] T013b [P] Créer les composants d'interface partagés dans `src/components/ui/` : `PageHero.tsx`
+      (bandeau sombre à grand titre ~124px desktop / `clamp()` mobile, mot surligné jaune),
+      `SectionHead.tsx` (en-tête numéroté « 01 » à chiffre jaune contouré), `Button.tsx`
+      (jaune / sombre / contour), `Chip.tsx` (filtre) — voir maquettes v11 et `design-system.md`
+- [ ] T013c [P] Ajouter l'écusson du club comme favicon et image de partage (`src/app/icon.png`,
+      métadonnées `openGraph` dans `layout.tsx`)
 - [ ] T014 [P] Créer le helper de réponse API `src/lib/api-response.ts` implémentant le format
       d'erreur standard `{ "errors": { "<champ>": "<message>" } }` de `contracts/api.md`
 - [ ] T015 Créer le script de seed `scripts/seed.ts` (exposé via `npm run seed`) : 1 compétition à
       venir, 1 compétition passée avec `result` renseigné, 2 `photo_category`, 14 `photo` (avec
       `created_at` échelonnés, pour exercer la pagination FR-018 sur au moins 2 pages), 1
-      `club_info`, 2 `useful_link` (jeu de données de `quickstart.md`)
+      `club_info` avec 4 `key_figures`, 4 `board_member`, 5 `partner` répartis sur les 3 niveaux
+      (dont 1 sans site) (jeu de données de `quickstart.md`)
 
 **Checkpoint**: Schéma, DB, layout et validation partagés prêts — les user stories peuvent démarrer
 
@@ -104,37 +123,66 @@ stories
 
 ## Phase 3: User Story 1 - Découvrir le club (Priority: P1) 🎯 MVP
 
-**Goal**: Un visiteur non authentifié comprend ce qu'est le club via l'accueil et la présentation
-(FR-001, FR-002, FR-008)
+**Goal**: Un visiteur non authentifié comprend ce qu'est le club et le sport via l'accueil (chiffres
+clés, prochain match), « Le club » et « Le tambourin » (FR-001, FR-002, FR-008, FR-022, FR-024,
+FR-025, FR-026, FR-027)
 
-**Independent Test**: Accéder à `/` et `/presentation` sans connexion et vérifier la présence du
-nom du club, d'une présentation courte, des points d'entrée (calendrier, galerie, contact),
-l'histoire, les valeurs et les infos d'encadrement
+**Independent Test**: Accéder à `/`, `/le-club` et `/le-tambourin` sans connexion et vérifier le nom
+du club, la présentation courte, les chiffres clés, le bloc « Prochain match » et son compte à
+rebours, l'histoire, les valeurs, les membres du bureau et le contenu du sport
 
 ### Tests for User Story 1
 
 - [ ] T016 [P] [US1] Test E2E Playwright `tests/e2e/discover-club.spec.ts` : ouvrir `/` sans
-      authentification, vérifier nom du club + présentation courte + liens vers calendrier/galerie/
-      contact ; ouvrir `/presentation`, vérifier histoire/valeurs/encadrement ; inclure un audit
-      `@axe-core/playwright` sur les deux pages
+      authentification, vérifier nom du club + présentation courte + 4 chiffres clés + bloc
+      « Prochain match » ; sans compétition à venir, le bloc est absent (FR-025) ; ouvrir
+      `/le-club`, vérifier histoire/valeurs/membres du bureau « Prénom X. — rôle » (FR-026) ; ouvrir
+      `/le-tambourin`, vérifier règles/terrain/rôles/frise 1923 (FR-022) ; navigation commune et
+      `aria-current` sur chaque page (FR-027) ; audit `@axe-core/playwright` sur les trois pages
+- [ ] T016a [P] [US1] Test unitaire Vitest `tests/unit/countdown.test.ts` : calcul jours/heures/
+      minutes/secondes restants, borné à zéro (jamais négatif), et sélection de la prochaine
+      compétition (première `date > now`, aucune si toutes passées) (FR-025)
 - [ ] T017 [P] [US1] Test unitaire Vitest `tests/unit/club-info-schema.test.ts` : valider le schéma
       Zod `ClubInfo` (rejet si `historyText`, `values` ou `contactEmail` manquants ou email au
       format invalide)
 
 ### Implementation for User Story 1
 
-- [ ] T018 [P] [US1] Ajouter le schéma Zod `ClubInfoSchema` dans `src/lib/validation.ts` :
-      `historyText` requis, `values` requis, `teamInfo` optionnel, `contactEmail` requis au format
-      email valide, `contactPhone` optionnel, `socialLinks` tableau optionnel de `{label, url}`
+- [ ] T018 [P] [US1] Ajouter les schémas Zod `ClubInfoSchema` (`historyText` requis, `values`
+      requis, `teamInfo` optionnel, `contactEmail` requis au format email valide, `contactPhone`
+      optionnel, `socialLinks` tableau optionnel de `{label, url}`, `keyFigures` tableau optionnel de
+      4 `{value ≤ 8 car., label}` au plus) et `BoardMemberSchema` (`firstName`, `lastNameInitial`
+      1 caractère, `role` requis) dans `src/lib/validation.ts`
 - [ ] T019 [US1] Implémenter `GET /api/club-info` dans `src/app/api/club-info/route.ts` : lit la
-      ligne singleton `club_info` via `src/lib/db.ts` et retourne le JSON conforme à
-      `contracts/api.md`
-- [ ] T020 [US1] Implémenter `src/app/page.tsx` (Accueil, FR-001, Server Component) : nom du club,
-      présentation courte et liens vers `/calendrier`, `/galerie`, `/contact`, à partir de `GET
-      /api/club-info`
-- [ ] T021 [US1] Implémenter `src/app/presentation/page.tsx` (FR-002, Server Component) : histoire
-      (`historyText`), valeurs (`values`) et infos d'encadrement/équipe (`teamInfo`) à partir de
-      `GET /api/club-info`
+      ligne singleton `club_info` et les `board_member` triés par `sort_order` via `src/lib/db.ts`
+      et retourne le JSON conforme à `contracts/api.md` (dont `keyFigures` et `boardMembers`)
+- [ ] T019a [P] [US1] Implémenter `src/lib/next-competition.ts` (module autonome, sans dépendance
+      envers `src/lib/competitions.ts` de l'US2) : `getNextCompetition` (lecture D1, première
+      `date > now` par date croissante, `null` sinon) et `timeRemaining(target, now)` borné à zéro
+      (FR-025)
+- [ ] T019b [P] [US1] Créer `src/components/home/Countdown.tsx` (`"use client"`) : le rendu serveur
+      n'affiche que la date du match (`<time>`) ; le décompte n'est calculé qu'après montage côté
+      client (`useEffect`), pour éviter tout écart d'hydratation ; jours/heures/minutes/secondes mis à
+      jour chaque seconde, bornés à zéro ; sous
+      `prefers-reduced-motion: reduce`, mise à jour à la minute sans secondes ni transition ; pas
+      d'`aria-live` (la date en clair porte l'information) (FR-025, `research.md` §16)
+- [ ] T019c [P] [US1] Créer `src/components/home/NextMatch.tsx` (Server Component : carte jaune/noire
+      nom, date, heure, lieu + `Countdown`) et `src/components/home/KeyFigures.tsx` (4 chiffres clés
+      au plus, rien si vide) (FR-024, FR-025)
+- [ ] T020 [US1] Implémenter `src/app/page.tsx` (Accueil, FR-001, Server Component) : hero plein
+      écran sur la photo du fronton (titre « La balle vole, nous suivons. » en bas de l'image),
+      `KeyFigures`, `NextMatch` (masqué sans compétition à venir), bloc Le club, bande « Viens
+      essayer » vers `/contact?sujet=adhesion` ; données de `GET /api/club-info` et
+      `getNextCompetition` ; rendu dynamique à chaque requête (`export const dynamic =
+      'force-dynamic'`, `research.md` §20) (FR-001, FR-008, FR-009, FR-023, FR-024, FR-025, SC-005)
+- [ ] T021 [US1] Implémenter `src/app/le-club/page.tsx` (FR-002, FR-026, Server Component) :
+      `PageHero`, histoire (`historyText`), valeurs (`values`), liste des membres du bureau
+      « Prénom X. — rôle », bande de contact, à partir de `GET /api/club-info` ; rendu dynamique
+      (`research.md` §20, FR-008, FR-009)
+- [ ] T021a [P] [US1] Implémenter `src/app/le-tambourin/page.tsx` (FR-022, Server Component,
+      contenu statique) : règles en bref (4 points), schéma du terrain en SVG/HTML accessible
+      (`role="img"` + description textuelle), rôles fonds/tiers/cordiers, frise historique avec la
+      fondation du club en 1923, citation (`research.md` §18)
 
 **Checkpoint**: US1 fonctionnelle et testable indépendamment (MVP)
 
@@ -172,7 +220,8 @@ vérifier le message d'état vide
       affiche les compétitions à venir séparément des passées, résultat affiché uniquement si
       `status = past` et `result` non nul (FR-016)
 - [ ] T028 [US2] Implémenter `src/app/calendrier/page.tsx` (FR-003, Server Component) : consomme
-      `GET /api/competitions`, utilise `CompetitionList`, affiche un message d'état vide explicite
+      `GET /api/competitions`, `PageHero` + sections numérotées « À venir » / « Derniers résultats »,
+      utilise `CompetitionList`, rendu dynamique (`research.md` §20, FR-008, FR-009), affiche un message d'état vide explicite
       si la liste est vide (FR-011)
 
 **Checkpoint**: US1 et US2 fonctionnelles indépendamment
@@ -228,23 +277,26 @@ par catégorie, faire défiler jusqu'à charger une page suivante automatiquemen
       Component React) : filtre les photos affichées par `categoryId` sans rechargement de page
       (FR-015)
 - [ ] T036 [US3] Implémenter `src/app/galerie/page.tsx` (FR-004, Server Component) : consomme `GET
-      /api/photo-categories` et la première page de `GET /api/photos`, intègre `GalleryGrid`,
-      `InfiniteScrollTrigger` et `CategoryFilter`, affiche un état vide explicite si aucune photo
-      (FR-011)
+      /api/photo-categories` et la première page de `GET /api/photos`, intègre `PageHero`,
+      `GalleryGrid`, `InfiniteScrollTrigger` et `CategoryFilter`, affiche un état vide explicite si
+      aucune photo (FR-011) ; bloc « Tu as pris des photos ? » vers `/contact?sujet=galerie` (FR-023) ;
+      rendu dynamique (`research.md` §20, FR-008, FR-009)
 
 **Checkpoint**: US1, US2 et US3 fonctionnelles indépendamment
 
 ---
 
-## Phase 6: User Story 4 - Trouver des liens utiles et contacter le club (Priority: P3)
+## Phase 6: User Story 4 - Découvrir les partenaires et contacter le club (Priority: P3)
 
-**Goal**: Lister les liens utiles externes et permettre l'envoi d'une demande de contact validée,
+**Goal**: Présenter les partenaires par niveau et permettre l'envoi d'une demande de contact validée
+(prénom, nom, email, sujet présélectionnable, message),
 protégée anti-bot et par une limite de fréquence par IP, avec mention RGPD (liée à une page
 politique de confidentialité), confirmation conditionnée à l'envoi effectif de l'email de
 notification, et purge automatique à 12 mois (FR-005, FR-006, FR-007, FR-012, FR-013, FR-014,
-FR-017, FR-019, FR-020)
+FR-017, FR-019, FR-020, FR-023)
 
-**Independent Test**: Ouvrir `/liens-utiles` et vérifier l'ouverture des liens en nouvel onglet ;
+**Independent Test**: Ouvrir `/partenaires` et vérifier le regroupement par niveau et l'ouverture
+des sites en nouvel onglet ; « Devenir partenaire » présélectionne le sujet Partenariat ;
 soumettre `/contact` avec des données valides + Turnstile → confirmation ; soumettre avec un email
 invalide → erreur explicite sans perte de saisie ; dépasser la limite de fréquence par IP → erreur
 429 ; simuler un échec d'envoi email → erreur explicite sans confirmation, demande tout de même
@@ -252,11 +304,15 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
 
 ### Tests for User Story 4
 
-- [ ] T037 [P] [US4] Test E2E Playwright `tests/e2e/liens-utiles.spec.ts` : chaque lien utile
-      s'affiche avec son libellé et s'ouvre dans un nouvel onglet (`target="_blank"`) ; audit
+- [ ] T037 [P] [US4] Test E2E Playwright `tests/e2e/partenaires.spec.ts` : partenaires groupés
+      principal → soutien → institutionnel, niveau vide non affiché, site ouvert dans un nouvel
+      onglet (`target="_blank"`), partenaire sans site non cliquable ; « Devenir partenaire » mène à
+      `/contact?sujet=partenariat` avec le sujet présélectionné (FR-005, FR-023) ; audit
       `@axe-core/playwright`
-- [ ] T038 [P] [US4] Test E2E Playwright `tests/e2e/contact.spec.ts` : soumission valide + challenge
-      Turnstile → message de confirmation ; soumission avec email invalide ou champ requis manquant
+- [ ] T038 [P] [US4] Test E2E Playwright `tests/e2e/contact.spec.ts` : soumission valide (prénom,
+      nom, email, sujet, message) + challenge Turnstile → message de confirmation ; `?sujet=adhesion`,
+      `?sujet=galerie` présélectionnent le bon sujet, `?sujet=inconnu` n'en présélectionne aucun
+      (FR-023) ; soumission avec email invalide ou champ requis manquant
       → message d'erreur explicite, autres champs conservés ; mention RGPD visible avant envoi et
       son lien mène vers `/politique-de-confidentialite` (FR-019) ; audit `@axe-core/playwright`
 - [ ] T038a [P] [US4] Test E2E Playwright `tests/e2e/politique-confidentialite.spec.ts` : page
@@ -264,7 +320,8 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
       FR-019) ; audit `@axe-core/playwright`
 - [ ] T039 [P] [US4] Test d'intégration Vitest `tests/integration/contact-api.test.ts` :
       `POST /api/contact` contre une D1 de test — 201 si données valides + Turnstile vérifié, avec
-      `notification_sent_at` renseigné ; 400 si champ requis manquant/email invalide ; 403 si
+      `notification_sent_at` renseigné et `subject` enregistré ; 400 si champ requis manquant/email
+      invalide/sujet hors liste ; 403 si
       Turnstile invalide ; 502 si l'envoi email échoue (provider mocké en erreur) — la ligne
       `contact_request` reste créée avec `notification_sent_at = null` (FR-017) ; vérifie que la
       ligne `contact_request` créée a `purge_at = submitted_at + 12 mois`
@@ -277,19 +334,30 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
 
 ### Implementation for User Story 4
 
-- [ ] T041 [P] [US4] Ajouter le schéma Zod `UsefulLinkSchema` (`label` et `url` requis, `category`
-      optionnel) dans `src/lib/validation.ts`
-- [ ] T042 [US4] Implémenter `GET /api/useful-links` dans `src/app/api/useful-links/route.ts`
-- [ ] T043 [US4] Implémenter `src/app/liens-utiles/page.tsx` (FR-005, Server Component) : consomme
-      `GET /api/useful-links`, chaque lien ouvert avec `target="_blank" rel="noopener noreferrer"`
+- [ ] T041 [P] [US4] Ajouter le schéma Zod `PartnerSchema` (`name` et `level` requis, `level` ∈
+      `principal | soutien | institutionnel`, `websiteUrl` et `logoUrl` URL optionnelles,
+      `description` ≤ 120 caractères optionnelle) dans `src/lib/validation.ts`
+- [ ] T042 [US4] Implémenter `GET /api/partners` dans `src/app/api/partners/route.ts` : tri par niveau
+      (principal, soutien, institutionnel) puis `sort_order`, `[]` si aucun partenaire
+- [ ] T043 [US4] Créer `src/components/partners/PartnerTiles.tsx` et implémenter
+      `src/app/partenaires/page.tsx` (FR-005, Server Component) : `PageHero`, un groupe par niveau non
+      vide (tuiles jaunes pour « principal », tuiles blanches sinon), logo via `next/image` si
+      présent, site ouvert avec `target="_blank" rel="noopener noreferrer"`, état vide explicite si
+      aucun partenaire, bloc « Devenir partenaire » vers `/contact?sujet=partenariat` ; rendu
+      dynamique (`research.md` §20, FR-008, FR-009)
+- [ ] T043a [P] [US4] Créer `src/lib/contact-subjects.ts` : liste fermée `adhesion`, `partenariat`,
+      `galerie`, `presse`, `autre` avec libellés, et `parseSubjectParam(slug)` renvoyant `null` pour
+      une valeur inconnue (FR-023, `research.md` §17)
 - [ ] T044 [P] [US4] Ajouter le schéma Zod `ContactRequestSchema` dans `src/lib/validation.ts` :
-      `name`, `email` (format email), `message` requis et non vides ; `captchaToken` requis ;
-      `rgpdNoticeAcknowledged` doit être `true`
+      `firstName`, `lastName` (≤ 80 caractères), `email` (format email), `message` requis et non
+      vides ; `subject` enum issu de `src/lib/contact-subjects.ts` ; `captchaToken` requis ;
+      `rgpdNoticeAcknowledged` doit être `true` (FR-007)
 - [ ] T045 [P] [US4] Implémenter la vérification serveur Cloudflare Turnstile dans
-      `src/lib/turnstile.ts` (appel `siteverify` avec `TURNSTILE_SECRET_KEY`)
+      `src/lib/turnstile.ts` (appel `siteverify` avec `TURNSTILE_SECRET_KEY`) (FR-012)
 - [ ] T046 [P] [US4] Implémenter l'envoi de notification email transactionnel dans
       `src/lib/email.ts` (provider externe, ex. Resend, via `EMAIL_PROVIDER_API_KEY` et
-      `CLUB_NOTIFICATION_EMAIL`), appel bloquant (`await`) avec un timeout explicite (10s) permettant
+      `CLUB_NOTIFICATION_EMAIL`) — objet de l'email = libellé du sujet, corps = prénom, nom, email et
+      message (FR-023) —, appel bloquant (`await`) avec un timeout explicite (10s) permettant
       de détecter et propager un échec d'envoi au Route Handler (FR-017, `research.md` §11)
 - [ ] T046a [P] [US4] Implémenter la limite de fréquence par IP dans `src/lib/rate-limit.ts` :
       hacher l'IP (`CF-Connecting-IP`) en SHA-256, incrémenter le compteur `RATE_LIMIT_KV` (clé
@@ -305,16 +373,19 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
       réussit, renseigner `notificationSentAt = now()` et retourner `201` avec confirmation (FR-017)
 - [ ] T047a [P] [US4] Implémenter `src/app/politique-de-confidentialite/page.tsx` (FR-019, Server
       Component) : contenu statique présentant l'usage et la durée de conservation (12 mois, FR-014)
-      des données du formulaire de contact
+      des données du formulaire de contact, ainsi que l'affichage des membres du bureau (prénom +
+      initiale, avec leur accord) et la manière de demander leur retrait
 - [ ] T048 [P] [US4] Créer `src/components/contact/RgpdNotice.tsx` (Server Component) : mention
       d'information RGPD affichée à la saisie du formulaire (FR-013), incluant un lien vers
       `/politique-de-confidentialite` (FR-019)
 - [ ] T049 [US4] Créer `src/components/contact/ContactForm.tsx` (`"use client"`, Client Component
-      React) : champs nom/email/message, widget Turnstile, intègre `RgpdNotice`, validation côté
-      client avant envoi, affichage des erreurs serveur sans perte des champs déjà saisis (Edge
-      Case)
-- [ ] T050 [US4] Implémenter `src/app/contact/page.tsx` (FR-006, Server Component) : intègre
-      `ContactForm` et `RgpdNotice`, affiche la confirmation après succès (`201`) ou un message
+      React) : champs prénom/nom/email/sujet (`<select>` alimenté par `src/lib/contact-subjects.ts`,
+      valeur initiale reçue en prop)/message, widget Turnstile, intègre `RgpdNotice`, validation côté
+      client avant envoi, affichage des erreurs serveur sans perte des champs déjà saisis (FR-007,
+      FR-012, Edge Case)
+- [ ] T050 [US4] Implémenter `src/app/contact/page.tsx` (FR-006, FR-023, Server Component) : lit
+      `searchParams.sujet` via `parseSubjectParam` pour présélectionner le sujet, `PageHero`, carte
+      des coordonnées du club, intègre `ContactForm` et `RgpdNotice`, affiche la confirmation après succès (`201`) ou un message
       d'erreur explicite en cas de `429` (limite de fréquence, FR-020) ou `502` (échec d'envoi email,
       FR-017), sans perte des champs déjà saisis
 - [ ] T051 [US4] Implémenter le job de purge planifié `src/scheduled/purge-contact-requests.ts`
@@ -331,17 +402,17 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
 
 - [ ] T052 [P] Exécuter `npm run test` (Vitest) et `npm run test:e2e` (Playwright) sur l'ensemble
       des suites et corriger les échecs
-- [ ] T053 [P] Exécuter l'audit Lighthouse mobile (`npx lighthouse ... --preset=mobile`) sur les 8
+- [ ] T053 [P] Exécuter l'audit Lighthouse mobile (`npx lighthouse ... --preset=mobile`) sur les 9
       pages publiques (via `npm run preview`) et vérifier les seuils "Good" (LCP < 2.5s, INP <
       200ms, CLS < 0.1, SC-002)
 - [ ] T053a [P] Ajouter des assertions de layout responsive dans les suites Playwright existantes
       (`tests/e2e/discover-club.spec.ts`, `calendrier.spec.ts`, `galerie.spec.ts`,
-      `liens-utiles.spec.ts`, `contact.spec.ts`, `politique-confidentialite.spec.ts`,
+      `partenaires.spec.ts`, `contact.spec.ts`, `politique-confidentialite.spec.ts`,
       `not-found.spec.ts`) sur 3 viewports (mobile 375px, tablette 768px, desktop 1280px) : pas de
       débordement horizontal, navigation utilisable, contenu principal visible sans perte de
       fonctionnalité (FR-010, SC-004)
 - [ ] T054 [P] Vérifier l'absence de violations critiques WCAG AA (rapport axe-core agrégé des
-      suites E2E) sur les 8 pages publiques
+      suites E2E) sur les 9 pages publiques
 - [ ] T055 Vérifier qu'aucun secret n'est committé (`.dev.vars` ignoré par git, secrets déclarés
       via `wrangler secret` en production) — principe I de la constitution
 - [ ] T056 Exécuter l'ensemble des scénarios de `quickstart.md` manuellement via `npm run preview`
@@ -371,8 +442,9 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
 - **US2 (P1)**: après Foundational — indépendante d'US1 (page distincte, mais peut réutiliser
   `Header`/`Footer` de la Phase 2)
 - **US3 (P2)**: après Foundational — indépendante d'US1/US2
-- **US4 (P3)**: après Foundational — indépendante d'US1/US2/US3 (le lien vers `/calendrier`,
-  `/galerie`, `/contact` sur l'accueil est un simple lien HTML, pas une dépendance fonctionnelle)
+- **US4 (P3)**: après Foundational — indépendante d'US1/US2/US3 (les liens `/contact?sujet=...`
+  depuis l'accueil, la galerie et les partenaires sont de simples liens HTML ; `contact-subjects.ts`
+  (T043a) doit exister avant T049/T050)
 
 ### Within Each User Story
 
@@ -393,6 +465,22 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
   T039, T038
 - **FR-019** (politique de confidentialité) : T013 (footer), T047a, T048, T038a
 - **FR-021** (404 personnalisée) : T056a, T056b
+
+### Révision « maquettes v11 » (2026-09-24)
+
+- **FR-005** (Partenaires, remplace Liens utiles) : T008 (`partner`), T015, T037, T041, T042, T043
+- **FR-022** (page Le tambourin) : T016, T021a
+- **FR-023** (sujet du contact) : T008 (`subject`), T020, T036, T038, T039, T043, T043a, T044, T046,
+  T049, T050
+- **FR-024 / FR-025** (chiffres clés, prochain match) : T008 (`key_figures`), T016, T016a, T018,
+  T019, T019a, T019b, T019c, T020
+- **FR-026** (bureau) : T008 (`board_member`), T015, T016, T018, T019, T021, T047a (mention
+  dans la politique de confidentialité)
+- **Analyse du 2026-09-24** : T019a rendu autonome (plus de dépendance US1 → US2) ; rendu dynamique
+  des pages alimentées par la base (T020, T021, T028, T036, T043) ; décompte calculé après montage
+  (T019b) ; références FR-007 / FR-012 explicitées (T044, T045, T049)
+- **FR-027** (navigation, écusson) : T013, T013a, T013c, T016
+- **Design v11** (grands titres, sections numérotées) : T002, T013b, puis chaque page
 
 ### Parallel Opportunities
 
@@ -432,7 +520,7 @@ Task: "Créer CompetitionList.tsx dans src/components/competitions/CompetitionLi
 2. US1 (Découvrir le club) → valider → déployer (MVP)
 3. US2 (Calendrier) → valider → déployer
 4. US3 (Galerie) → valider → déployer
-5. US4 (Liens utiles et contact) → valider → déployer
+5. US4 (Partenaires et contact) → valider → déployer
 6. Polish transverse (Phase 7)
 
 ### Stratégie en équipe parallèle

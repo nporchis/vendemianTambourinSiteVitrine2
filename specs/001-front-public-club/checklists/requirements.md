@@ -33,3 +33,8 @@
 
 - Validation passed on first pass; no spec updates required before `/speckit-clarify` or
   `/speckit-plan`.
+- 2026-09-24 — révision « maquettes v11 » (FR-001/002/005/006/008/009 modifiées, FR-022 à FR-027
+  ajoutées, entités Partenaire et Membre du bureau, Lien utile supprimée) : re-validée, tous les
+  items passent. Correction au passage : FR-020 ne nomme plus le produit anti-bot (Turnstile),
+  détail d'implémentation réservé au plan. FR-027 (navigation) n'a pas de scénario dédié mais est
+  vérifiable directement sur chaque page.

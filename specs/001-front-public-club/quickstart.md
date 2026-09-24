@@ -21,7 +21,7 @@ et `contracts/api.md` pour le détail des champs et endpoints.
 ```bash
 npm install
 npx drizzle-kit migrate    # applique les migrations sur la base D1 (locale ou distante)
-npm run seed                # jeu de données minimal : 1 compétition à venir, 1 passée avec résultat, 2 catégories photo, 3 photos, 1 club-info, 2 liens utiles
+npm run seed                # jeu de données minimal : 1 compétition à venir, 1 passée avec résultat, 2 catégories photo, 3 photos, 1 club-info (4 chiffres clés), 4 membres du bureau, 5 partenaires sur 3 niveaux
 npm run dev                 # next dev, pour un développement rapide sans bindings Cloudflare
 npm run preview             # build OpenNext + `wrangler pages dev`, pour tester avec les bindings Cloudflare (D1, Turnstile)
 ```
@@ -31,11 +31,20 @@ npm run preview             # build OpenNext + `wrangler pages dev`, pour tester
 ### 1. Découvrir le club (US1, P1)
 
 1. Ouvrir `/` sans authentification.
-2. Vérifier la présence du nom du club, d'une présentation courte, et des liens vers calendrier,
-   galerie, contact.
-3. Naviguer vers `/presentation` et vérifier histoire, valeurs, encadrement/équipe.
+2. Vérifier la présence du nom du club, d'une présentation courte, des 4 chiffres clés (FR-024)
+   et du bloc « Prochain match » avec un compte à rebours qui décroît (FR-025).
+3. Activer « réduire les animations » (DevTools → Rendering → `prefers-reduced-motion: reduce`),
+   recharger : le compte à rebours ne s'anime plus chaque seconde.
+4. Passer la date de la seule compétition à venir dans le passé (`wrangler d1 execute`), recharger :
+   le bloc « Prochain match » n'est plus affiché.
+5. Naviguer vers `/le-club` : histoire, valeurs, membres du bureau au format « Prénom X. — rôle »
+   (FR-026). Naviguer vers `/le-tambourin` : règles, schéma du terrain, rôles, frise avec 1923
+   (FR-022).
+6. Vérifier sur chaque page la navigation Accueil / Le tambourin / Le club / Calendrier / Galerie /
+   Partenaires / Contact et la page courante signalée (FR-027).
 
-**Attendu**: pages accessibles sans connexion, contenu visible (FR-001, FR-002, FR-008).
+**Attendu**: pages accessibles sans connexion, contenu visible (FR-001, FR-002, FR-008, FR-022,
+FR-024–FR-027).
 
 ### 2. Consulter le calendrier (US2, P1)
 
@@ -56,11 +65,16 @@ npm run preview             # build OpenNext + `wrangler pages dev`, pour tester
    qu'aucun nouvel appel n'est déclenché à ce moment.
 5. Vider la table `Photo` et recharger : vérifier le message d'état vide (FR-011).
 
-### 4. Liens utiles et contact (US4, P3)
+### 4. Partenaires et contact (US4, P3)
 
-1. Ouvrir `/liens-utiles`, vérifier que chaque lien s'ouvre dans un nouvel onglet.
-2. Ouvrir `/contact`, soumettre le formulaire avec des données valides + valider le challenge
-   Turnstile → vérifier le message de confirmation (FR-006, FR-007, FR-012).
+1. Ouvrir `/partenaires` : partenaires groupés principal → soutien → institutionnel ; un partenaire
+   avec site s'ouvre dans un nouvel onglet, un partenaire sans site n'est pas cliquable (FR-005).
+2. Cliquer « Devenir partenaire » → `/contact?sujet=partenariat` avec « Partenariat » présélectionné ;
+   tester aussi « Viens essayer » (accueil) et « Envoyer mes photos » (galerie), puis
+   `/contact?sujet=inconnu` → aucune présélection (FR-023).
+3. Ouvrir `/contact`, soumettre le formulaire (prénom, nom, email, sujet, message) avec des données
+   valides + valider le challenge Turnstile → vérifier le message de confirmation (FR-006, FR-007,
+   FR-012) et que l'email reçu par le club mentionne le sujet.
 3. Vérifier en base qu'une ligne `ContactRequest` a été créée avec `purgeAt` = `submittedAt` + 12
    mois (FR-014), `notificationSentAt` renseigné, et qu'un email de notification a été envoyé au
    club (FR-017).
@@ -107,6 +121,6 @@ npm run preview
 npx lighthouse http://localhost:8788 --preset=mobile
 ```
 
-Vérifier LCP, CLS, INP au niveau "Good" sur les 8 pages publiques (les 6 pages fonctionnelles +
+Vérifier LCP, CLS, INP au niveau "Good" sur les 9 pages publiques (les 7 pages de contenu +
 politique de confidentialité + 404), et absence de violations critiques WCAG AA dans le rapport
 Lighthouse/axe-core.

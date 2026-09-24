@@ -1,6 +1,6 @@
 # API Contract: Front public du club Vendémian Tambourin
 
-**Feature**: `001-front-public-club` | **Date**: 2026-09-09
+**Feature**: `001-front-public-club` | **Date**: 2026-09-09, révisé le 2026-09-24
 
 API REST exposée par les Route Handlers Next.js (`src/app/api/**/route.ts`), déployés sur
 Cloudflare Pages/Workers via l'adapter OpenNext, consommée par le front public.
@@ -11,7 +11,8 @@ Format des réponses : JSON. Format des erreurs de validation : `{ "errors": { "
 
 ## GET /api/club-info
 
-Retourne les informations de présentation du club (singleton).
+Retourne les informations de présentation du club (singleton), avec les chiffres clés (FR-024)
+et les membres du bureau triés par `sortOrder` (FR-026).
 
 **200 OK**
 ```json
@@ -19,6 +20,8 @@ Retourne les informations de présentation du club (singleton).
   "historyText": "string",
   "values": "string",
   "teamInfo": "string | null",
+  "keyFigures": [{ "value": "1923", "label": "Fondation" }],
+  "boardMembers": [{ "id": "string", "firstName": "Jean-Marc", "lastNameInitial": "R", "role": "Président" }],
   "contactEmail": "string",
   "contactPhone": "string | null",
   "socialLinks": [{ "label": "string", "url": "string" }]
@@ -80,12 +83,30 @@ défaut et maximum 12.
 `nextCursor: null` signale également la fin de la liste (plus rien à charger au défilement,
 voir Edge Case correspondant dans `spec.md`).
 
-## GET /api/useful-links
+## GET /api/partners
+
+Liste les partenaires triés par niveau (`principal`, `soutien`, `institutionnel`) puis par
+`sortOrder` (FR-005). Le regroupement visuel est fait côté page.
 
 **200 OK**
 ```json
-[{ "id": "string", "label": "string", "url": "string", "category": "string | null" }]
+[
+  {
+    "id": "string",
+    "name": "string",
+    "level": "principal | soutien | institutionnel",
+    "websiteUrl": "string | null",
+    "description": "string | null",
+    "logoUrl": "string | null"
+  }
+]
 ```
+Liste vide `[]` si aucun partenaire (état vide + bloc « Devenir partenaire » côté front).
+
+## Présélection du sujet de contact (FR-023)
+
+Pas un endpoint : convention d'URL de la page `/contact?sujet=<slug>`, avec `slug` ∈ `adhesion`,
+`partenariat`, `galerie`, `presse`, `autre`. Tout autre valeur est ignorée (aucune présélection).
 
 ## POST /api/contact
 
@@ -97,8 +118,10 @@ La confirmation de succès n'est renvoyée que si l'email de notification au clu
 **Request body**
 ```json
 {
-  "name": "string",
+  "firstName": "string",
+  "lastName": "string",
   "email": "string",
+  "subject": "adhesion | partenariat | galerie | presse | autre",
   "message": "string",
   "captchaToken": "string",
   "rgpdNoticeAcknowledged": true
@@ -110,8 +133,8 @@ La confirmation de succès n'est renvoyée que si l'email de notification au clu
 { "confirmation": "Votre demande a bien été envoyée." }
 ```
 
-**400 Bad Request** — validation échouée (champ requis manquant, email invalide, mention RGPD non
-acquittée) :
+**400 Bad Request** — validation échouée (champ requis manquant, email invalide, sujet hors liste,
+mention RGPD non acquittée) :
 ```json
 { "errors": { "email": "Adresse email invalide" } }
 ```
@@ -138,7 +161,8 @@ reste persistée côté serveur :
 2. Valider tous les champs (voir `data-model.md` → ContactRequest) — `400` si invalide.
 3. Vérifier `captchaToken` auprès de l'API Cloudflare Turnstile (`siteverify`) — `403` si échec.
 4. Enregistrer la demande avec `submittedAt` et `purgeAt = submittedAt + 12 mois`.
-5. Envoyer une notification email au club, **en l'attendant** (appel bloquant).
+5. Envoyer une notification email au club, **en l'attendant** (appel bloquant) ; l'objet de
+   l'email reprend le libellé du sujet (FR-023) et le corps contient prénom, nom, email et message.
 6. Si l'envoi échoue : renseigner `notificationSentAt = null`, retourner `502` (la demande reste
    enregistrée, voir `research.md` §11). Si l'envoi réussit : renseigner `notificationSentAt =
    now()`, retourner `201` avec la confirmation.

@@ -40,7 +40,7 @@ d'hébergement le plus bas possible.
   Next.js.
 - **Alternatives considérées**: CSS Modules (plus de boilerplate, natif Next.js mais moins rapide à
   écrire), librairie de composants complète type MUI (poids et complexité superflus au regard du
-  principe Simplicité/YAGNI pour un site à 6 pages).
+  principe Simplicité/YAGNI pour un site à 6 pages — 9 pages publiques depuis la révision du 2026-09-24).
 
 ## 3. Stockage des données
 
@@ -201,7 +201,7 @@ d'hébergement le plus bas possible.
 
 - **Decision**: route statique `src/app/politique-de-confidentialite/page.tsx` (Server Component),
   contenu en dur dans le code (pas de lecture D1/API), liée depuis la mention RGPD du formulaire de
-  contact (`RgpdNotice`, FR-013) et depuis le footer commun aux 8 pages.
+  contact (`RgpdNotice`, FR-013) et depuis le footer commun à toutes les pages (8 à l'époque, 9 depuis le 2026-09-24).
 - **Rationale**: conforme à l'assumption ajoutée en clarification — ce texte juridique évolue au
   même rythme que le code du front public, pas besoin d'un modèle de données ni d'une route API
   dédiée pour une feature dont le backoffice n'existe pas encore (principe Simplicité/YAGNI).
@@ -221,6 +221,97 @@ d'hébergement le plus bas possible.
   demande une personnalisation dans le style du site) ; redirection vers l'accueil (moins clair pour
   le visiteur qu'un message explicite "page introuvable" avec lien de retour).
 
+## 14. Remplacement de « Liens utiles » par « Partenaires » (FR-005)
+
+- **Decision**: nouvelle table `partner` (nom, niveau `principal | soutien | institutionnel`, URL et
+  description et logo optionnels, ordre) et route `GET /api/partners` retournant une liste triée par
+  niveau puis ordre ; le regroupement par niveau est fait côté page (Server Component). Les logos
+  suivent la même règle que les photos (URL d'image déjà optimisée, `next/image` avec le loader
+  Cloudflare, §8). La table `useful_link` et la route `useful-links` sont supprimées.
+- **Rationale**: correspond exactement à la maquette v11 validée ; un enum de 3 niveaux suffit
+  (YAGNI) et reste éditable par le futur backoffice.
+- **Alternatives considérées**: garder `UsefulLink` avec une catégorie « partenaire » (mélange deux
+  notions, pas de niveau ni de logo) ; niveaux libres en texte (tri et regroupement fragiles).
+
+## 15. Chiffres clés et membres du bureau (FR-024, FR-026)
+
+- **Decision**: les chiffres clés sont une colonne JSON `keyFigures` de `club_info`
+  (`[{ value, label }]`, 4 au plus, ordre = ordre du tableau) ; les membres du bureau sont une table
+  dédiée `board_member` (prénom, initiale du nom, rôle, ordre). `GET /api/club-info` renvoie les
+  deux, pour qu'une seule lecture alimente l'accueil et « Le club ».
+- **Rationale**: 4 paires valeur/libellé n'ont pas de vie propre → JSON dans le singleton (même
+  approche que `socialLinks`) ; les membres du bureau changent à chaque assemblée générale et seront
+  édités un par un dans le backoffice → table. Stocker seulement l'initiale du nom limite les
+  données personnelles exposées (spec, Assumptions).
+- **Alternatives considérées**: table `key_figure` (surdimensionnée) ; bureau en texte libre
+  `teamInfo` (non structuré, ne permet pas l'affichage rôle par rôle de la maquette) ; nom complet
+  stocké puis tronqué à l'affichage (données personnelles conservées inutilement).
+
+## 16. Prochain match et compte à rebours (FR-025)
+
+- **Decision**: la page d'accueil (Server Component) sélectionne la première compétition à venir
+  (`date > now`, tri croissant) via la même couche de lecture que `/api/competitions` ; seul le
+  compte à rebours est un Client Component (`setInterval` 1 s, bornes à zéro, pas de valeur
+  négative). Sous `prefers-reduced-motion: reduce`, il n'anime rien : il affiche jours/heures/minutes
+  et se met à jour chaque minute, sans transition. Le HTML initial contient déjà la date du match
+  (lisible sans JS).
+- **Rationale**: JS client minimal (principe II), contenu utile sans JavaScript, accessibilité
+  (pas de région qui change chaque seconde annoncée aux lecteurs d'écran : `aria-live` absent,
+  la date en clair porte l'information).
+- **Alternatives considérées**: compte à rebours calculé côté serveur uniquement (figé après
+  chargement) ; bibliothèque de compte à rebours (dépendance inutile).
+
+## 17. Sujet du formulaire de contact et présélection (FR-006, FR-023)
+
+- **Decision**: liste fermée définie une seule fois dans `src/lib/contact-subjects.ts`
+  (`adhesion`, `partenariat`, `galerie`, `presse`, `autre`, avec leur libellé) et réutilisée par le
+  schéma Zod (enum) et le `<select>`. La présélection passe par le paramètre d'URL `?sujet=<slug>`
+  lu côté serveur par `/contact` ; un slug inconnu est ignoré (aucune présélection). Les CTA
+  « Viens essayer », « Devenir partenaire » et « Envoyer mes photos » pointent vers
+  `/contact?sujet=adhesion|partenariat|galerie`. Le sujet est stocké dans `contact_request.subject`
+  et repris dans l'objet de l'email envoyé au club. Prénom et nom remplacent le champ `name`.
+- **Rationale**: une seule source de vérité pour la liste (validation serveur = options affichées) ;
+  paramètre d'URL simple, partageable, sans état client.
+- **Alternatives considérées**: sujet libre (non filtrable côté club) ; présélection via
+  `localStorage` ou fragment `#` (non lisible côté serveur, fragile).
+
+## 18. Page « Le tambourin » (FR-022)
+
+- **Decision**: `src/app/le-tambourin/page.tsx`, Server Component statique ; le texte (règles,
+  rôles, frise, citation) vit dans le fichier, le schéma du terrain est un SVG/HTML inline accessible
+  (`role="img"` + description textuelle des dimensions et positions).
+- **Rationale**: contenu stable, décidé avec l'utilisateur comme non géré par le backoffice ; même
+  approche que la politique de confidentialité (§12). Zéro requête de données.
+- **Alternatives considérées**: entité éditable (hors périmètre, YAGNI) ; image bitmap du terrain
+  (moins nette, texte non accessible).
+
+## 19. Direction visuelle v11 (grands titres éditoriaux)
+
+- **Decision**: palette et typographies « Fronton » inchangées (Barlow Condensed + Barlow via
+  `next/font/google`), enrichies des composants issus de la maquette « Site vitrine » V1 : bandeau
+  de page à titre géant (~124px desktop, `clamp()` en mobile) avec mot surligné jaune, en-têtes de
+  section numérotés « 01/02 », carte « Prochain match » jaune/noire, bande d'appel à l'action en
+  diagonale. Détail dans `design-system.md`.
+- **Rationale**: choix de l'utilisateur (maquettes v11 validées) : plus dynamique que la v9 tout en
+  gardant l'identité Fronton et l'écusson du club.
+- **Alternatives considérées**: adoption complète de la V1 (noir/jaune `#FFD60A`, Bebas Neue) —
+  refusée par l'utilisateur.
+
+## 20. Rendu des pages alimentées par la base (SC-005, FR-025)
+
+- **Decision**: les pages qui lisent D1 (accueil, le club, calendrier, galerie, partenaires) sont
+  rendues **dynamiquement à chaque requête** (`export const dynamic = 'force-dynamic'`) ; les pages
+  statiques (le tambourin, politique de confidentialité, 404) restent pré-rendues. Pas de cache
+  applicatif à ce stade.
+- **Rationale**: garantit qu'une modification de contenu est visible sans redéploiement (SC-005) et
+  que le bloc « Prochain match » ne reste jamais figé sur un match passé (FR-025). Le trafic d'un
+  club amateur rend le coût d'une requête D1 par visite négligeable, et le rendu serveur reste
+  rapide (principe II).
+- **Alternatives considérées**: pré-rendu avec revalidation périodique (ISR) — support partiel sur
+  Cloudflare via OpenNext et délai de fraîcheur à régler ; cache KV invalidé par le backoffice —
+  prématuré tant que le backoffice n'existe pas (YAGNI), à réévaluer si les mesures Lighthouse
+  (T053) l'exigent.
+
 ## Résumé des inconnues résolues
 
 Toutes les entrées `NEEDS CLARIFICATION` du Technical Context sont résolues par les décisions
@@ -229,4 +320,6 @@ remplace la version précédente basée sur Astro, à la demande explicite de l'
 d'une stack React/Next.js plus répandue, tout en conservant l'hébergement 100% Cloudflare retenu
 précédemment pour son coût nul à cette échelle. Les sections 9 à 13 ont été ajoutées le 2026-09-23
 pour résoudre les décisions techniques introduites par les clarifications FR-017–FR-021 (session
-`spec.md` du 2026-09-23), sans remettre en cause les décisions 1 à 8.
+`spec.md` du 2026-09-23), sans remettre en cause les décisions 1 à 8. Les sections 14 à 20 ont été
+ajoutées le 2026-09-24 pour la révision « maquettes v11 » (FR-022–FR-027, Partenaires, sujet du
+contact), sans remettre en cause les décisions 1 à 13.

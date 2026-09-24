@@ -1,10 +1,12 @@
 # Design System — Vendémian Tambourin (front public)
 
-**Source** : extrait des 6 maquettes validées du canvas Claude Design
-(<https://claude.ai/artifact/HMJG4Z85iZobGTzk8gWjYR>, version 6) — `Main` (Accueil),
-`Presentation`, `Calendrier`, `Galerie`, `LiensUtiles`, `Contact`.
-Direction retenue : **« Fronton dynamique »**, palette relevée sur la photo du Fronton
-Vendémianais fournie par le club.
+**Source** : maquettes validées du canvas Claude Design
+(<https://claude.ai/artifact/HMJG4Z85iZobGTzk8gWjYR>, **version 11**, 2026-09-24) — rangée 1 :
+`Main` (Accueil), `LeTambourin`, `Presentation` (Le club), `Calendrier`, `Galerie`, `Partenaires`,
+`Contact` ; rangée 2 : `MobileFerme`, `MenuMobile`, `Erreur404`, `Confidentialite`, `Etats`.
+Direction retenue : **« Fronton »** (palette relevée sur la photo du Fronton Vendémianais,
+écusson du club), enrichie en v10–v11 de la **mise en page éditoriale** de la maquette « Site
+vitrine » V1 : titres géants, mot-clé surligné en jaune, sections numérotées « 01 / 02 ».
 
 **Tokens exécutables** : [`design/tokens.css`](design/tokens.css) — à reprendre tel quel dans
 `src/styles/globals.css` (tâche T002).
@@ -94,10 +96,14 @@ directement les Core Web Vitals) :
 
 | Token | Taille | Interligne | Graisse | Emploi |
 |---|---|---|---|---|
-| `text-hero` | 68px | 0.95 | 700 | H1 de la home |
-| `text-page-title` | 52px | 1 | 700 | H1 des pages intérieures |
-| `text-section` | 30px | 1.2 | 700 | H2 de section |
-| `text-subsection` | 22px | 1.2 | 700 | H2 de sous-groupe (Liens utiles) |
+| `text-hero` | 88px | 0.9 | 800 | H1 de la home (2 lignes, en bas du hero) |
+| `text-page-title` | 124px | 0.88 | 800 | H1 géant des bandeaux de page (v11) |
+| `text-cta` | 112px | 0.86 | 800 | titre des bandes d'appel (« Viens essayer… », « Devenir partenaire ») |
+| `text-section-head` | 64px | 0.9 | 800 | H2 des en-têtes de section numérotés |
+| `text-section-number` | 72px | 0.85 | 800 | chiffre « 01 » jaune contouré (décoratif) |
+| `text-statement` | 44px | 1.02 | 800 | phrase d'accroche en capitales (bloc Le club) |
+| `text-section` | 30px | 1.2 | 700 | H2 secondaire (titre de formulaire, bloc) |
+| `text-subsection` | 22px | 1.2 | 700 | H3 de groupe |
 | `text-card-title` | 19–20px | 1.3 | 700 | H3 de carte, titre de compétition |
 | `text-lead` | 17–18px | 1.6 | 400 | chapô de bandeau, accroche du hero |
 | `text-body` | 16px | 1.75 | 400 | paragraphes |
@@ -117,8 +123,19 @@ Les maquettes utilisent ponctuellement 14.5px / 15.5px / 13.5px : **arrondir à 
 
 ### Échelle mobile (< 768px) 🆕
 
-Non maquettée. Valeurs à appliquer : hero 40px, H1 de page 34px, H2 24px, H2 de sous-groupe 20px,
-H3 18px, chapô 16px, corps 16px. Le reste est inchangé.
+Les titres géants utilisent `clamp()` (voir `tokens.css`) : hero 44px, H1 de page 48px, bande
+d'appel 44px, en-tête de section 36px (chiffre 40px), accroche 28px, H2 secondaire 24px, H3 18px,
+chapô 16px, corps 16px. Les titres restent en capitales, interligne serré (≤ 0.92), jamais plus de
+3 lignes à 375px.
+
+### Mot surligné 🆕 (v11)
+
+Un seul mot-clé par titre géant est surligné : `<em>` sans italique, fond `vt-yellow`, texte
+`vt-ink`, `padding: 0 .08em`, `box-decoration-break: clone`. Contraste 10.3:1. L'emphase est
+sémantique (`<em>`) et non purement visuelle. Exemples validés : « La balle *vole*, nous
+suivons. », « Un jeu occitan, *vivant* depuis 700 ans. », « Un club de village, *depuis 1923*. »,
+« Calendrier *&* résultats. », « Ce que ça *donne*. », « Merci à nos *partenaires*. », « Une
+question ? *Écris-nous*. »
 
 ---
 
@@ -154,8 +171,9 @@ Deux variantes :
 - **Overlay** (Accueil) : `position: relative` au-dessus du hero, fond transparent, aucune bordure.
 - **Solide** (5 pages intérieures) : fond `vt-ink`, filet bas `vt-border-header`.
 
-Commun : `padding: 20px 40px`, nav **alignée à droite** (`justify-content: flex-end`), **pas de
-logo ni de titre** (retrait validé par le club), 6 liens, `gap: 26px` → 24px, 15px / 600 /
+Commun : `padding: 12px 40px`, **écusson du club à gauche** (52px de haut, lien accueil, décision
+2026-09-24 — §8) et nav à droite (`justify-content: space-between`), 7 liens — Accueil, Le
+tambourin, Le club, Calendrier, Galerie, Partenaires, Contact (FR-027), `gap: 26px` → 24px, 15px / 600 /
 uppercase / `0.02em`.
 
 | État | Couleur |
@@ -170,26 +188,30 @@ couleur seule ne doit pas porter l'information).
 
 ### 4.2 Footer
 
-Fond `vt-ink`, texte `vt-text-on-dark-muted` 13px, `padding: 24px 40px`, copyright à gauche, liens
-« Liens utiles » / « Contact » à droite (`gap: 18px` → 16px). Survol 🆕 : `#E4DFD0`.
+Fond `vt-ink`, texte `vt-text-on-dark-muted` 13px, `padding: 24px 40px`, copyright « © Vendémian
+Tambourin — Club de tambourin depuis 1923 » à gauche, liens « Partenaires » / « Contact » /
+« Politique de confidentialité » à droite (`gap: 18px` → 16px). Survol 🆕 : `#E4DFD0`.
 
 ### 4.3 Hero plein écran (Accueil uniquement)
 
-`min-height: 820px`, photo en fond (`fronton.jpg`) + overlay `--vt-hero-overlay`. Contenu centré
-verticalement, largeur max 680px (texte 520px) : eyebrow → H1 68px → accroche 18px → 2 boutons.
-En bas, **bande « Prochain match »** : filet haut `rgb(242 237 224 / .15)`, `padding: 20px 40px`,
-libellé jaune 12px/800/`0.1em`, puce `4px` `#6B655A`, texte `#E4DFD0` 14px, lien jaune poussé à
-droite (`margin-left: auto`).
+`min-height: 860px`, photo en fond (`fronton.jpg`) + overlay `--vt-hero-overlay` (sombre en haut
+pour le header, **quasi transparent au centre** pour laisser voir la photo, sombre en bas pour le
+texte). Contenu **aligné en bas** (`justify-content: flex-end`, 40px au-dessus des chiffres) :
+indicateur de saison (pastille jaune + libellé 13px) → H1 88px sur 2 lignes → accroche 18px (max
+560px) → 2 boutons (« Découvrir le sport », « Voir le calendrier »). En pied de hero, la rangée des
+**chiffres clés** (§4.15). La bande « Prochain match » de la v9 est remplacée par la carte §4.14.
 
 A11y : la photo est décorative (`alt=""`) puisque le texte porte l'information ;
 `priority` sur `next/image` (c'est le LCP).
 
 ### 4.4 Bandeau de page (5 pages intérieures)
 
-Fond `vt-ink`, `padding: 64px 40px 56px`. Structure : **eyebrow** (trait 22×3px jaune + libellé
-jaune 13px/700/`0.14em`) → `h1` 52px crème → chapô 17px `#E4DFD0`, largeur max 640px.
+Fond `vt-ink`, `padding: 80px 40px 72px`. Structure : **eyebrow** (trait 22×3px jaune + libellé
+jaune 13px/700/`0.14em`) → `h1` **124px** crème, capitales, interligne 0.88, un mot surligné
+(§2) → chapô 19px `#E4DFD0`, largeur max 640px, 28px au-dessus.
 
-Eyebrows utilisés : « Le club », « Compétitions », « En images », « Contact ».
+Eyebrows utilisés : « Le sport », « Le club », « Compétitions », « Galerie », « Ils soutiennent le
+club », « Nous contacter », « Vos données ».
 
 ### 4.5 Boutons
 
@@ -223,16 +245,14 @@ A11y : rendre les chips comme `<button>` (Galerie, filtre client) ou `<a>` (Cale
 serveur par URL), avec `aria-pressed` / `aria-current`. Les `<span>` des maquettes ne sont que du
 rendu statique.
 
-### 4.7 Carte de contenu (valeurs, liens utiles)
+### 4.7 Carte de valeur (Le club)
 
-Fond `vt-surface`, bordure 1px `vt-border`, rayon 6px, `padding: 28px` (20px 24px pour les lignes
-de liens). Carte « valeur » : pastille d'icône 44px rayon 8px fond `vt-yellow` icône `vt-ink` →
-`h3` 19px → texte 14px `vt-text-secondary`, `gap: 14px`.
-Ligne « lien utile » : `<a target="_blank">` en `flex` — libellé 16px/700 + domaine 13px
-`vt-text-muted` à gauche, icône « lien externe » `vt-terracotta` 18px à droite.
+Fond `vt-surface`, bordure 1px `vt-border`, **filet haut 4px `vt-yellow`**, rayon 6px,
+`padding: 28px`, `gap: 12px` : numéro « 01 » 44px `vt-terracotta` → `h3` 32px → texte 15px
+`vt-text-prose`. Trois cartes : Transmettre, Représenter, Rassembler.
 
-A11y liens externes : `rel="noopener noreferrer"` et mention de l'ouverture dans un nouvel onglet
-(texte masqué visuellement ou `aria-label`).
+A11y liens externes (partenaires, réseaux) : `rel="noopener noreferrer"` et mention de l'ouverture
+dans un nouvel onglet (texte masqué visuellement ou `aria-label`).
 
 ### 4.8 Ligne de compétition (Calendrier)
 
@@ -257,7 +277,7 @@ A11y : le résultat doit rester lisible sans la couleur — garder le libellé �
 Grille 4 colonnes, `gap: 16px`. La première vignette occupe `span 2 × span 2` (`min-height: 340px`),
 les suivantes 162px puis 200px de haut. Vignette avec légende : image + overlay
 `--vt-image-caption-overlay` + légende 13px/600 `#F2EDE0` en bas à gauche (14px de marge).
-Tuiles sans photo : aplat de la palette de tuiles + icône image centrée.
+Tuiles en cours de chargement : **squelette neutre** crème uni (`#E4DFD0` / `#EAE5D7`), pulse désactivé sous `prefers-reduced-motion` (validé le 2026-09-24). Une photo sans image n'est pas affichée ; les aplats colorés des maquettes n'étaient que des placeholders.
 Bouton « Charger plus de photos » (tertiaire) centré, 36px au-dessus.
 
 A11y : `alt` = légende de la photo ; les tuiles placeholder sont décoratives.
@@ -287,10 +307,69 @@ Titre `h3` 20px `#F2EDE0`, texte 15px `#E4DFD0`, icônes `vt-yellow` 18px align�
 les réseaux sociaux (13px/700/uppercase `#F2EDE0`).
 Encadrement : pastille ronde 56px `vt-terracotta` en tête de bloc.
 
-### 4.12 Bande CTA jaune (Présentation)
+### 4.12 Bande CTA jaune (Le club)
 
-Fond `vt-yellow`, `padding: 28px 40px`, `space-between` : message 15px/700 `vt-ink` à gauche,
-email + bouton « sur fond jaune » à droite.
+Fond `vt-yellow`, `padding: 32px 40px`, `space-between` : message `font-display` 34px/800
+capitales `vt-ink` (« Envie de rejoindre le club ? ») à gauche, bouton « sur fond jaune » à droite.
+
+### 4.13 En-tête de section numéroté 🆕 (v11)
+
+Grille `auto 1fr auto`, `gap: 24px`, aligné en bas, `padding-bottom: 18px`, **filet bas 2px
+`vt-ink`** (ou `rgb(242 237 224 / .2)` sur fond sombre), `margin-bottom: 36px`.
+Chiffre « 01 » 72px/800 `vt-yellow` avec contour `-webkit-text-stroke: 1.5px vt-ink` (décoratif,
+`aria-hidden="true"`) → `h2` 64px capitales → lien optionnel 13px/800 capitales `vt-terracotta`
+(« Tout le calendrier → »). La numérotation repart à 01 sur chaque page.
+
+### 4.14 Carte « Prochain match » 🆕 (Accueil, FR-025)
+
+Deux colonnes `1.15fr 1fr`, rayon 6px, sans bordure. **Gauche** fond `vt-yellow`, `padding: 40px` :
+tag contour 2px `vt-ink` (« Championnat régional · J12 ») → `h3` 76px date/heure sur 2 lignes →
+lieu 16px/700. **Droite** fond `vt-ink` : écusson du club (72px) vs pastille adverse (cercle 72px
+contour crème, initiales), « VS » 52px `#6B655A` ; puis compte à rebours 4 colonnes (chiffres 42px
+`vt-yellow`, libellés 11px capitales `#9B9686`), séparé par un filet `rgb(242 237 224 / .15)`.
+Masquée s'il n'y a pas de compétition à venir. Sous `prefers-reduced-motion`, secondes masquées,
+mise à jour à la minute. Pas d'`aria-live` ; la date en clair est dans un `<time>`.
+Mobile : colonnes empilées, compte à rebours 2×2.
+
+### 4.15 Chiffres clés 🆕 (Accueil, FR-024)
+
+Rangée de 4 colonnes au pied du hero, filet haut `rgb(242 237 224 / .2)`, séparateurs verticaux
+`rgb(242 237 224 / .15)`. Valeur `font-display` 60px/800 (la 1re en `vt-yellow`, les autres crème),
+libellé 12px/700 capitales `0.12em` `#C9C3B3`. Mobile : grille 2×2, valeurs 40px. Rendu en `<dl>`.
+
+### 4.16 Tuiles partenaires 🆕 (Partenaires, FR-005)
+
+- **Principal** : grille 3 colonnes, tuile fond `vt-yellow`, rayon 6px, `padding: 28px`,
+  `min-height: 180px` : tag « Principal » (fond `vt-ink`, texte `vt-yellow`, 11px/800) → nom
+  `font-display` 34px capitales → description 14px/600 + « ↗ » si site.
+- **Soutien / Institutionnel** : grille 4 resp. 3 colonnes, tuile blanche bordure `vt-border`,
+  `min-height: 120px`, nom centré 24px capitales (ou logo `next/image`, hauteur max 64px, `alt` =
+  nom du partenaire).
+- Tuile sans site : `<div>` non focusable ; avec site : `<a target="_blank">`.
+- Bloc **« Devenir partenaire »** : fond `vt-ink`, 2 colonnes, titre 96px (« partenaire » en
+  `vt-yellow`), liste d'avantages à flèches jaunes, bouton primaire vers `/contact?sujet=partenariat`.
+
+### 4.17 Page « Le tambourin » 🆕 (FR-022)
+
+- **Règles en bref** : grille 4 colonnes sur fond blanc, filets haut/bas 2px `vt-ink`, cellules
+  séparées par `vt-border` ; chiffre 60px jaune contouré (« 5×5 », « 80 m », « 13 J », « +60 ») →
+  `h3` 24px → texte 15px. Mobile : 2 puis 1 colonne.
+- **Schéma du terrain** : section `vt-ink`, rectangle `aspect-ratio: 4/1`, contour 2px `vt-yellow`,
+  ligne médiane pleine jaune, lignes à 25 % / 75 % en pointillés, graduation tous les 10 %, 5
+  joueurs par camp (pastilles 20px jaunes / crème, contour `vt-ink`). `role="img"` +
+  `aria-label` décrivant dimensions et placement. Légende 13px capitales, valeurs en jaune.
+  Rôles (fonds, tiers, cordiers) en 3 colonnes : `h3` 34px `vt-yellow` + texte 15px `#E4DFD0`.
+- **Frise** : grille `180px 1fr`, année `font-display` 64px, filet haut 2px `vt-ink` par ligne,
+  `h3` 30px + texte 16px (max 640px).
+- **Citation** : bande `vt-yellow`, `<blockquote>` `font-display` 92px capitales, attribution
+  13px/800 capitales.
+
+### 4.18 Bande d'appel en diagonale 🆕 (Accueil)
+
+Fond `vt-ink`, `padding: 80px 40px`, bandeau `vt-yellow` décoratif pivoté de −8° couvrant ~52 % à
+droite (`aria-hidden`). Titre 112px crème (« essayer » en `vt-yellow`) à gauche ; à droite, texte
+17px/600 `vt-ink` sur la partie jaune + bouton sombre vers `/contact?sujet=adhesion`. Mobile :
+bandeau jaune en bas (60 % de hauteur), contenu empilé, titre 44px.
 
 ---
 
@@ -304,15 +383,18 @@ Playwright de T053a, aux viewports 375 / 768 / 1280) :
 | Gouttière | 20px | 24px | 40px |
 | Largeur de contenu | 100% | 100% | max 1200px, centré |
 | Nav | menu bouton → panneau plein écran fond `vt-ink`, liens 20px, cibles ≥ 44px | nav en ligne, `gap: 16px` | nav en ligne, `gap: 24px` |
-| Hero | `min-height: 70vh`, H1 40px, boutons empilés pleine largeur | `min-height: 600px`, H1 52px | 820px, H1 68px |
-| Bande « prochain match » | empilée, lien en dessous | en ligne | en ligne |
+| Hero | `min-height: 90vh`, H1 44px (2 lignes), boutons empilés pleine largeur, chiffres 2×2 | `min-height: 700px`, H1 64px | 860px, H1 88px |
+| Bandeau de page | H1 48px, `padding: 48px 20px 40px` | H1 88px | H1 124px |
+| En-tête de section | chiffre au-dessus du titre, titre 36px, lien dessous | titre 48px | titre 64px |
+| Carte « Prochain match » | colonnes empilées, compte à rebours 2×2 | empilée | 2 colonnes |
+| Règles / Partenaires | 1 colonne (règles 2 dès 480px), tuiles 2 colonnes | 2 colonnes | 4 / 3 colonnes |
 | Valeurs / Histoire | 1 colonne | 2 colonnes (valeurs), 1 colonne (histoire) | 3 / 2 colonnes |
 | Ligne de compétition | date au-dessus du titre, chip résultat sous le texte | inchangé | inchangé |
 | Grille galerie | 2 colonnes, vignette vedette `span 2` | 3 colonnes | 4 colonnes |
 | Contact | 1 colonne (formulaire puis infos) | 1 colonne | 2 colonnes |
 | Footer | empilé, centré | en ligne | en ligne |
 
-Le menu mobile n'est pas maquetté : **à valider** avant implémentation (§8).
+Menu mobile (validé le 2026-09-24, planches `MobileFerme` / `MenuMobile`, 7 entrées FR-027) : bouton « Menu » (icône burger + libellé, 44px de haut) aligné à droite ; à l'ouverture, panneau **plein écran** `vt-ink` en `role="dialog" aria-modal`, liens en Barlow Condensed 800 / 32px majuscules, cibles de 60px, page courante en `vt-yellow` + barre verticale + `aria-current`, bouton « Fermer » ; focus piégé, Échap ferme, focus rendu au bouton.
 
 ---
 
@@ -340,13 +422,16 @@ Le menu mobile n'est pas maquetté : **à valider** avant implémentation (§8).
 |---|---|---|
 | `design/tokens.css` → `src/styles/globals.css` | tokens Tailwind v4 + base | T002 |
 | Polices via `next/font/google` (Barlow, Barlow Condensed) | `src/app/layout.tsx` | T012 |
-| `Header` (variantes overlay/solide) + `Footer` | `src/components/layout/` | T013 |
-| Hero + bande « prochain match » | `src/app/page.tsx` | T020 |
-| Bandeau de page, cartes valeurs, bloc sombre, bande CTA | `src/app/presentation/page.tsx` | T021 |
+| `Header` (variantes overlay/solide, écusson) + `Footer` | `src/components/layout/` | T013 |
+| Menu mobile | `src/components/layout/MobileMenu.tsx` | T013a |
+| `PageHero`, `SectionHead`, `Button`, `Chip`, mot surligné | `src/components/ui/` | T013b |
+| Hero, chiffres clés, carte « Prochain match », bande diagonale | `src/app/page.tsx`, `src/components/home/` | T019b, T019c, T020 |
+| Cartes valeurs, liste du bureau, bande CTA jaune | `src/app/le-club/page.tsx` | T021 |
+| Règles, schéma du terrain, rôles, frise, citation | `src/app/le-tambourin/page.tsx` | T021a |
 | Lignes de compétition, chips de filtre | `src/components/competitions/` | T027, T028 |
-| Grille photo, chips de catégorie | `src/components/gallery/` | T034, T035 |
-| Lignes de liens externes | `src/app/liens-utiles/page.tsx` | T043 |
-| Champs, encadré Turnstile, mention RGPD, carte info | `src/components/contact/` | T048, T049, T050 |
+| Grille photo, chips de catégorie, bloc « Envoyer mes photos » | `src/components/gallery/` | T034, T035, T036 |
+| Tuiles partenaires, bloc « Devenir partenaire » | `src/components/partners/` | T043 |
+| Champs, sujet, encadré Turnstile, mention RGPD, carte info | `src/components/contact/` | T048, T049, T050 |
 | Vérification responsive 375/768/1280 | suites Playwright | T053a |
 
 **Variante Tailwind v3** — si `create-next-app` installe Tailwind v3 (T001/T002), transposer le bloc
@@ -357,7 +442,7 @@ theme: {
   extend: {
     colors: { vt: { ink: '#1C1B18', terracotta: '#B5433A', yellow: '#F0C419', cream: '#F2EDE0' /* … */ } },
     fontFamily: { display: ['var(--font-barlow-condensed)'], sans: ['var(--font-barlow)'] },
-    fontSize: { hero: ['4.25rem', '0.95'], 'page-title': ['3.25rem', '1'] /* … */ },
+    fontSize: { hero: ['clamp(2.75rem, 5vw + 1rem, 5.5rem)', '0.9'], 'page-title': ['clamp(3rem, 9vw, 7.75rem)', '0.88'] /* … */ },
     borderRadius: { control: '4px', card: '6px', icon: '8px' },
   },
 }
@@ -382,11 +467,21 @@ menu mobile, ombre de survol des cartes, lien d'évitement, `prefers-reduced-mot
 4. `<link>` Google Fonts → `next/font/google` (auto-hébergement, pas de requête tierce).
 5. Chips et boutons rendus en `<span>` dans les maquettes → vrais `<button>` / `<a>`.
 
-**À valider par le club avant `/speckit-implement`** :
+**Décisions validées (2026-09-24)** :
 
-- le motif du **menu mobile** (panneau plein écran sombre proposé) ;
-- l'absence de **logo** dans le header — confirmée pour l'accueil, reconduite sur les 5 pages ;
-- le traitement des **tuiles sans photo** de la galerie (aplats colorés) une fois les vraies photos
-  disponibles ;
-- les pages **hors périmètre maquetté** : 404, politique de confidentialité (liée depuis la mention
-  RGPD), états vides (aucune compétition, aucune photo) et états d'erreur de chargement.
+- **Menu mobile** : panneau plein écran sombre (§5).
+- **Logo** (écusson jaune/noir « Vendemian Tambourin 1923 », fourni le 2026-09-24) : petit écusson à
+  gauche du header sur toutes les pages (y compris l'accueil et le menu mobile), lien vers l'accueil
+  (`aria-label="Vendémian Tambourin — accueil"`). Pas de grand écusson dans le hero (essayé puis retiré). Remplace la décision « sans logo » du 2026-09-11.
+  Fichier source attendu dans `public/brand/` (SVG de préférence, sinon PNG transparent ≥ 512px).
+- **Galerie** : squelette neutre pendant le chargement ; fin de liste silencieuse (FR-018).
+- **Mise en page éditoriale v10–v11** : palette/typos Fronton conservées ; ajout des titres
+  géants, mots surlignés, sections numérotées, carte « Prochain match », bande diagonale, pages
+  « Le tambourin » et « Partenaires » (remplace « Liens utiles »). Titre de l'accueil réduit à
+  88px sur 2 lignes et placé en bas du hero pour laisser voir la photo (v11).
+- **Contenu** : textes repris de la maquette « Site vitrine » V1 avec l'année de fondation **1923**
+  (écusson) ; chiffres, bureau, partenaires, règles et devise restent à valider par le club.
+- **Pages hors périmètre** maquettées dans l'artifact (2e rangée du canvas) : 404 (« Balle hors du
+  fronton »), politique de confidentialité (texte brouillon à faire relire par le bureau), planche
+  d'états (vides, chargement, erreurs de chargement, retours du formulaire FR-017 / FR-020, erreur de
+  champ). Le footer gagne un lien « Politique de confidentialité ».
