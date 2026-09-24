@@ -30,7 +30,12 @@ scope de cette feature et relèvent du futur backoffice ; seule l'écriture des 
 | `imageUrl` | string (URL) | requis, format déjà optimisé pour le web (hypothèse spec) |
 | `caption` | string \| null | optionnel |
 | `categoryId` | string (FK → PhotoCategory) | requis pour permettre le regroupement/filtrage (FR-015) |
-| `takenOrEventDate` | datetime \| null | optionnel, utilisé pour le tri |
+| `takenOrEventDate` | datetime \| null | optionnel, informatif (date réelle de l'événement) |
+| `createdAt` | datetime | généré serveur à l'insertion ; clé de tri stable pour la pagination par curseur de la galerie (FR-018), indépendante de `takenOrEventDate` (nullable/potentiellement dupliqué) |
+
+**Pagination** (`GET /api/photos`, FR-018) : tri par `createdAt DESC, id DESC` (tie-breaker),
+curseur opaque encodant le dernier `(createdAt, id)` reçu — voir `contracts/api.md` et
+`research.md` §9.
 
 ## PhotoCategory (Événement / Catégorie)
 
@@ -75,16 +80,36 @@ scope de cette feature et relèvent du futur backoffice ; seule l'écriture des 
 | `captchaVerified` | boolean | doit être `true` (vérifié via Cloudflare Turnstile) pour que la requête soit acceptée (FR-012) |
 | `rgpdNoticeAcknowledged` | boolean | doit être `true` (mention affichée et validée à la saisie, FR-013) |
 | `purgeAt` | datetime | calculé = `submittedAt` + 12 mois (FR-014) ; utilisé par le job de purge |
+| `notificationSentAt` | datetime \| null | horodatage de l'envoi réussi de l'email de notification au club ; `null` si l'envoi a échoué (FR-017) — la ligne reste enregistrée même dans ce cas, voir `research.md` §11 |
 
 **Validation** (côté serveur, principe I — Sécurité by Design) :
+- Limite de fréquence par IP vérifiée **avant** toute validation de champ (FR-020, voir
+  `research.md` §10 — stockage hors D1, dans Cloudflare KV).
 - `name`, `email`, `message` non vides.
 - `email` conforme à un format RFC 5322 simplifié.
 - `captchaVerified` doit être vérifié côté serveur via l'API Cloudflare Turnstile avant tout enregistrement.
 - Requête rejetée avec message d'erreur explicite si un champ requis manque ou si l'email est
   invalide (FR-007), sans perte des autres champs déjà saisis côté client.
+- La confirmation de succès n'est renvoyée que si l'email de notification a été envoyé avec succès
+  (FR-017) ; la ligne `ContactRequest` reste enregistrée même si cet envoi échoue.
 
-**Lifecycle**: création unique à la soumission du formulaire → suppression automatique (job planifié)
-lorsque `now >= purgeAt`. Aucune mise à jour après création (pas d'édition d'une demande existante).
+**Lifecycle**: création unique à la soumission du formulaire (avec `notificationSentAt` renseigné ou
+`null` selon le succès de l'envoi email) → suppression automatique (job planifié) lorsque
+`now >= purgeAt`. Aucune mise à jour après création, sauf le cas particulier de `notificationSentAt`
+qui pourrait être renseigné par un futur mécanisme de nouvel essai (hors scope de cette feature).
+
+## Stockage additionnel hors D1 (rate limiting du formulaire de contact)
+
+En complément des entités D1 ci-dessus, `POST /api/contact` s'appuie sur un compteur **Cloudflare
+KV** éphémère (binding `RATE_LIMIT_KV`) pour appliquer la limite de fréquence par IP (FR-020) — ce
+n'est pas une entité métier versionnée par migration Drizzle, mais un état technique à courte durée
+de vie :
+
+| Clé | Valeur | TTL |
+|---|---|---|
+| `contact:{sha256(ip)}` | nombre de soumissions dans la fenêtre courante | 3600s (1h) |
+
+Voir `research.md` §10 pour le détail de la décision et les alternatives écartées.
 
 ## Résumé des relations
 

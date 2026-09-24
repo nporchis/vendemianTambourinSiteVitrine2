@@ -132,10 +132,101 @@ d'hébergement le plus bas possible.
   tiers dédié (surdimensionné pour l'échelle d'un club amateur), stockage S3 externe (ajoute un
   fournisseur hors écosystème Cloudflare sans bénéfice net ici).
 
+## 9. Pagination de la galerie photo (défilement infini, FR-018)
+
+- **Decision**: pagination par curseur (keyset pagination) sur `GET /api/photos`, triée par
+  `createdAt DESC, id DESC` (nouveau champ `createdAt` ajouté à `Photo`, voir `data-model.md`),
+  taille de page fixe (12 photos). Le curseur est une chaîne opaque encodant `(createdAt, id)` du
+  dernier élément reçu. Côté client, un `IntersectionObserver` sur une sentinelle en bas de grille
+  déclenche automatiquement l'appel de la page suivante (`GalleryGrid`, Client Component) — pas de
+  bouton « charger plus ».
+- **Rationale**: le keyset pagination reste stable même si de nouvelles photos sont ajoutées pendant
+  la navigation (contrairement à un `OFFSET` classique qui peut dupliquer/sauter des éléments) ;
+  `createdAt` (généré serveur à l'insertion) donne un ordre total déterministe, indépendant du champ
+  métier optionnel `takenOrEventDate` (nullable, potentiellement dupliqué). `IntersectionObserver`
+  est une API navigateur native, sans dépendance supplémentaire, conforme au principe Simplicité.
+- **Alternatives considérées**: pagination par `OFFSET/LIMIT` (plus simple à écrire mais instable en
+  cas d'insertions concurrentes, désalignée avec le principe de fiabilité attendu pour un
+  défilement continu) ; chargement complet côté client puis pagination virtuelle (rejeté
+  explicitement par la clarification, qui demande une pagination serveur réelle) ; librairie tierce
+  de scroll infini (`react-infinite-scroll-component` etc., superflue face à `IntersectionObserver`
+  natif — YAGNI).
+
+## 10. Limite de fréquence du formulaire de contact (rate limiting par IP, FR-020)
+
+- **Decision**: compteur dans **Cloudflare KV** (nouveau binding `RATE_LIMIT_KV`), clé
+  `contact:{sha256(ip)}`, valeur = nombre de soumissions, **TTL natif KV de 3600s (1h)** — voir
+  seuil proposé dans `spec.md` → Assumptions (5 soumissions/heure/IP, ajustable). Vérifié en tout
+  premier dans `POST /api/contact` (avant même la validation Zod et Turnstile, pour éviter du
+  travail inutile en cas d'abus), retourne **429** si dépassé.
+- **Rationale**: reste 100% dans l'écosystème Cloudflare déjà retenu (principe Simplicité/un seul
+  fournisseur) ; le TTL natif de KV évite d'écrire et de maintenir un job de purge dédié à cet état
+  éphémère (contrairement à une table D1, qui aurait demandé une migration + un nettoyage
+  supplémentaire pour une donnée qui n'a de sens que pendant quelques heures) ; l'IP est hachée
+  (SHA-256) avant stockage — elle n'est jamais conservée en clair, ni au-delà de la fenêtre de rate
+  limiting (principe I — Sécurité by Design, minimisation des données).
+- **Alternatives considérées**: liaison native **Cloudflare Rate Limiting** (fonctionnalité Workers
+  dédiée) — écartée car ses fenêtres fixes (secondes) collent mal à la sémantique métier "N par
+  heure" de la clarification, et elle est plus difficile à exercer dans les tests Vitest/Playwright
+  locaux que KV (émulable via `wrangler`/`miniflare`) ; table D1 `ContactRateLimit` avec nettoyage
+  périodique — fonctionnellement équivalente mais ajoute une migration et un job de purge pour un
+  état purement éphémère, complexité non justifiée (YAGNI) ; compteur en mémoire du Worker — non
+  viable, chaque invocation de Worker est stateless et peut s'exécuter sur une instance différente.
+
+## 11. Confirmation du formulaire de contact conditionnée à l'email (FR-017)
+
+- **Decision**: `POST /api/contact` reste **synchrone de bout en bout** : (1) vérifier la limite de
+  fréquence, (2) valider les champs, (3) vérifier Turnstile, (4) **enregistrer** la demande en D1,
+  (5) **envoyer l'email de notification en l'attendant (`await`)**, (6) retourner `201` seulement si
+  l'envoi réussit. Si l'envoi échoue (exception ou réponse d'erreur du provider), retourner une
+  erreur explicite (**502 Bad Gateway**) — mais **la ligne D1 déjà enregistrée à l'étape (4) n'est
+  pas annulée** (pas de rollback). Le champ `notificationSentAt` (ajouté à `ContactRequest`, voir
+  `data-model.md`) reste `null` dans ce cas, pour signaler l'échec.
+- **Rationale**: la clarification (session 2026-09-23) a explicitement tranché pour bloquer la
+  confirmation sur le succès de l'email plutôt qu'un mode "best-effort". Ne pas annuler
+  l'enregistrement D1 évite une perte totale du message en cas d'échec transitoire du provider
+  email — tant que le backoffice n'existe pas pour consulter ces demandes, la ligne D1 reste le
+  seul filet de récupération manuelle (`wrangler d1 execute`) pour le club. Impact à surveiller pour
+  SC-003 (« confirmation en moins d'1 minute ») : le choix d'un provider email à faible latence
+  (ex. Resend, typiquement < 1s) et d'un timeout explicite (proposé : 10s) sur l'appel HTTP au
+  provider dans `src/lib/email.ts` permet de rester dans ce budget même en cas d'attente réseau.
+- **Alternatives considérées**: confirmation "best-effort" (email en tâche non bloquante, erreur
+  journalisée seulement) — c'était la recommandation initiale, explicitement écartée par
+  l'utilisateur lors de la clarification ; file d'attente avec retry différé (ex. Cloudflare Queues)
+  — apporterait de la résilience mais ajoute un composant d'infrastructure supplémentaire non
+  justifié à ce stade (YAGNI) ; rollback de l'enregistrement D1 en cas d'échec email — rejeté, ferait
+  perdre le message du visiteur au lieu de le rendre simplement invisible temporairement.
+
+## 12. Page « Politique de confidentialité » (FR-019)
+
+- **Decision**: route statique `src/app/politique-de-confidentialite/page.tsx` (Server Component),
+  contenu en dur dans le code (pas de lecture D1/API), liée depuis la mention RGPD du formulaire de
+  contact (`RgpdNotice`, FR-013) et depuis le footer commun aux 8 pages.
+- **Rationale**: conforme à l'assumption ajoutée en clarification — ce texte juridique évolue au
+  même rythme que le code du front public, pas besoin d'un modèle de données ni d'une route API
+  dédiée pour une feature dont le backoffice n'existe pas encore (principe Simplicité/YAGNI).
+- **Alternatives considérées**: contenu géré via une future entité backoffice — surdimensionné pour
+  un texte qui change rarement et hors périmètre de cette feature ; simple modale/texte inline sans
+  page dédiée — rejeté par la clarification, qui demande explicitement une page liée.
+
+## 13. Page 404 personnalisée (FR-021)
+
+- **Decision**: `src/app/not-found.tsx`, convention native du Next.js App Router (Server Component,
+  déclenché automatiquement sur toute route non résolue), réutilisant `Header`/`Footer` et le style
+  du design system, avec un lien de retour vers `/`.
+- **Rationale**: zéro dépendance ou configuration de routing supplémentaire — Next.js sert cette
+  page pour n'importe quelle URL inconnue sans logique custom. Cohérent avec le reste du front
+  (mêmes composants de layout).
+- **Alternatives considérées**: page 404 par défaut du framework (rejetée par la clarification, qui
+  demande une personnalisation dans le style du site) ; redirection vers l'accueil (moins clair pour
+  le visiteur qu'un message explicite "page introuvable" avec lien de retour).
+
 ## Résumé des inconnues résolues
 
 Toutes les entrées `NEEDS CLARIFICATION` du Technical Context sont résolues par les décisions
 ci-dessus ; aucune inconnue bloquante ne subsiste avant la conception (Phase 1). Ce document
 remplace la version précédente basée sur Astro, à la demande explicite de l'utilisateur en faveur
 d'une stack React/Next.js plus répandue, tout en conservant l'hébergement 100% Cloudflare retenu
-précédemment pour son coût nul à cette échelle.
+précédemment pour son coût nul à cette échelle. Les sections 9 à 13 ont été ajoutées le 2026-09-23
+pour résoudre les décisions techniques introduites par les clarifications FR-017–FR-021 (session
+`spec.md` du 2026-09-23), sans remettre en cause les décisions 1 à 8.

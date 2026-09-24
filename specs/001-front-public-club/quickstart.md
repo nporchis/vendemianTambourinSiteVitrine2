@@ -10,6 +10,8 @@ et `contracts/api.md` pour le détail des champs et endpoints.
 - Node.js 20 LTS, npm
 - Un compte Cloudflare + CLI `wrangler` authentifié (`wrangler login`)
 - Une base D1 créée (`wrangler d1 create vt-site-db`) et déclarée dans `wrangler.toml`
+- Un namespace KV créé (`wrangler kv:namespace create RATE_LIMIT_KV`) et déclaré dans
+  `wrangler.toml`, utilisé pour la limite de fréquence par IP du formulaire de contact (FR-020)
 - Variables d'environnement (`.dev.vars` pour le dev local, secrets Wrangler en production) :
   - `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`
   - `EMAIL_PROVIDER_API_KEY`, `CLUB_NOTIFICATION_EMAIL`
@@ -45,11 +47,14 @@ npm run preview             # build OpenNext + `wrangler pages dev`, pour tester
 
 ### 3. Parcourir la galerie (US3, P2)
 
-1. Ouvrir `/galerie`.
+1. Ouvrir `/galerie` avec plus de 12 photos seedées (pour que la pagination soit exercée).
 2. Vérifier l'affichage des photos avec lazy-loading (network throttling mobile dans les DevTools).
 3. Filtrer par catégorie/événement et vérifier que seules les photos de la catégorie s'affichent
    (FR-015).
-4. Vider la table `Photo` et recharger : vérifier le message d'état vide (FR-011).
+4. Faire défiler jusqu'au bas des photos déjà chargées et vérifier qu'une page suivante se charge
+   automatiquement, sans clic (FR-018) ; répéter jusqu'à épuisement (`nextCursor: null`) et vérifier
+   qu'aucun nouvel appel n'est déclenché à ce moment.
+5. Vider la table `Photo` et recharger : vérifier le message d'état vide (FR-011).
 
 ### 4. Liens utiles et contact (US4, P3)
 
@@ -57,12 +62,27 @@ npm run preview             # build OpenNext + `wrangler pages dev`, pour tester
 2. Ouvrir `/contact`, soumettre le formulaire avec des données valides + valider le challenge
    Turnstile → vérifier le message de confirmation (FR-006, FR-007, FR-012).
 3. Vérifier en base qu'une ligne `ContactRequest` a été créée avec `purgeAt` = `submittedAt` + 12
-   mois (FR-014), et qu'un email de notification a été envoyé au club.
+   mois (FR-014), `notificationSentAt` renseigné, et qu'un email de notification a été envoyé au
+   club (FR-017).
 4. Soumettre le formulaire avec un email invalide → vérifier le message d'erreur explicite et la
    conservation des autres champs saisis (FR-007, Edge Case).
-5. Vérifier que la mention RGPD est visible avant l'envoi (FR-013).
+5. Vérifier que la mention RGPD est visible avant l'envoi (FR-013) et que le lien qu'elle contient
+   ouvre bien `/politique-de-confidentialite` (FR-019).
+6. Simuler un échec du provider email (ex. `EMAIL_PROVIDER_API_KEY` invalide en local) et soumettre
+   le formulaire → vérifier une erreur `502` explicite côté client (pas de confirmation de succès),
+   puis vérifier en base que la ligne `ContactRequest` a quand même été créée, avec
+   `notificationSentAt = null` (FR-017).
+7. Soumettre le formulaire 6 fois de suite depuis la même IP (dépassant le seuil proposé de 5/heure)
+   → vérifier que la 6ᵉ soumission retourne une erreur `429` explicite (FR-020).
 
-### 5. Mise à jour de contenu sans redéploiement (SC-005)
+### 5. Politique de confidentialité et page 404 (FR-019, FR-021)
+
+1. Ouvrir `/politique-de-confidentialite` directement → vérifier que la page s'affiche, dans le
+   style du site, sans authentification (FR-019).
+2. Ouvrir une URL inexistante (ex. `/page-qui-n-existe-pas`) → vérifier l'affichage d'une page 404
+   personnalisée, dans le style du site, avec un lien de retour vers l'accueil (FR-021).
+
+### 6. Mise à jour de contenu sans redéploiement (SC-005)
 
 1. Modifier directement une ligne `club_info` ou `competition` en base D1 (ex. `wrangler d1
    execute vt-site-db --command "UPDATE club_info SET values = '...' WHERE id = '...'"`), sans
@@ -87,5 +107,6 @@ npm run preview
 npx lighthouse http://localhost:8788 --preset=mobile
 ```
 
-Vérifier LCP, CLS, INP au niveau "Good" sur les 6 pages publiques, et absence de violations
-critiques WCAG AA dans le rapport Lighthouse/axe-core.
+Vérifier LCP, CLS, INP au niveau "Good" sur les 8 pages publiques (les 6 pages fonctionnelles +
+politique de confidentialité + 404), et absence de violations critiques WCAG AA dans le rapport
+Lighthouse/axe-core.

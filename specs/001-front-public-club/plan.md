@@ -1,6 +1,6 @@
 # Implementation Plan: Front public du club Vendémian Tambourin
 
-**Branch**: `001-front-public-club` | **Date**: 2026-09-10 (révisé pour stack Next.js) | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-front-public-club` | **Date**: 2026-09-10 (révisé pour stack Next.js), 2026-09-23 (révisé pour clarifications FR-017–FR-021) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-front-public-club/spec.md`
 
@@ -14,9 +14,13 @@ TypeScript) déployée sur Cloudflare Pages/Workers via l'adapter officiel OpenN
 Cloudflare D1/Drizzle ; le contenu (compétitions, photos, infos club, liens utiles) est lu depuis ce
 modèle de données — son édition via un backoffice reste une feature séparée. Le formulaire de
 contact persiste les demandes (purge automatique à 12 mois, RGPD) et notifie le club par email,
-protégé par Cloudflare Turnstile. Stack et hébergement choisis pour maximiser la popularité/le
-bassin de développeurs (React/Next.js) tout en restant 100% dans l'écosystème Cloudflare (budget
-nul/faible, un seul fournisseur d'hébergement/DB).
+protégé par Cloudflare Turnstile et une limite de fréquence par IP ; la confirmation de succès
+n'est renvoyée que si l'email de notification part effectivement. La galerie photo est paginée
+côté serveur avec chargement automatique au défilement (infinite scroll). Deux pages
+supplémentaires complètent le périmètre : une politique de confidentialité statique et une page 404
+personnalisée. Stack et hébergement choisis pour maximiser la popularité/le bassin de développeurs
+(React/Next.js) tout en restant 100% dans l'écosystème Cloudflare (budget nul/faible, un seul
+fournisseur d'hébergement/DB).
 
 ## Technical Context
 
@@ -26,7 +30,8 @@ nul/faible, un seul fournisseur d'hébergement/DB).
 React 18+, Tailwind CSS, Drizzle ORM, Zod (validation), Cloudflare Turnstile (client + vérification
 serveur)
 
-**Storage**: Cloudflare D1 (SQLite managé) via Drizzle ORM — voir `data-model.md`
+**Storage**: Cloudflare D1 (SQLite managé) via Drizzle ORM — voir `data-model.md` ; Cloudflare KV
+(compteur éphémère de rate limiting par IP, TTL 1h — voir `research.md` §10)
 
 **Testing**: Vitest (unitaire/intégration), Playwright + `@axe-core/playwright` (E2E + accessibilité)
 exécutés contre `wrangler pages dev` (via OpenNext)
@@ -44,10 +49,14 @@ standard, conforme à SC-002 (contenu principal affiché < 2,5s)
 unique (Cloudflare) ; aucune donnée sensible en clair dans le dépôt ; validation serveur systématique
 (principe I) ; composants interactifs (filtre galerie, formulaire de contact) limités à des Client
 Components React ciblés — les pages restent des Server Components par défaut pour limiter le JS
-envoyé au client (principe II)
+envoyé au client (principe II) ; galerie paginée côté serveur (défilement infini, FR-018) pour
+limiter le payload initial et le JS transféré sur mobile ; formulaire de contact protégé par
+Turnstile + une limite de fréquence par IP (FR-020), confirmation de succès conditionnée à l'envoi
+effectif de l'email de notification (FR-017)
 
-**Scale/Scope**: 6 pages publiques, trafic faible à modéré (club amateur), jeu de données restreint
-(dizaines de compétitions/photos/liens)
+**Scale/Scope**: 8 pages publiques (les 6 pages fonctionnelles + politique de confidentialité +
+404, FR-019/FR-021), trafic faible à modéré (club amateur), jeu de données restreint (dizaines de
+compétitions/photos/liens)
 
 ## Constitution Check
 
@@ -55,12 +64,14 @@ envoyé au client (principe II)
 
 | Principe | Évaluation | Statut |
 |---|---|---|
-| I. Sécurité by Design | Validation serveur (Zod) dans le Route Handler `POST /api/contact`, Cloudflare Turnstile vérifié serveur avant écriture, aucun secret committé (variables d'environnement Wrangler pour D1/Turnstile/email), pas de route d'admin dans cette feature (backoffice hors scope) | PASS |
-| II. Performance & Accessibilité | Server Components par défaut (JS minimal envoyé au client), Client Components React limités au filtre galerie et au formulaire de contact, `next/image` pour le lazy-loading/redimensionnement automatique, Tailwind pour un HTML sémantique/accessible, audits Lighthouse/axe-core prévus dans quickstart.md | PASS |
-| III. Simplicité (YAGNI) | Un seul framework full-stack, un seul fournisseur d'hébergement/DB (Cloudflare), pas de fonctionnalité hors périmètre spec (pas de multi-langue, pas d'e-commerce) ; stack limitée à Next.js/Drizzle/Tailwind/Zod | PASS |
-| IV. Séparation Front public / Backoffice | Cette feature ne fait que lire le contenu (compétitions, photos, infos club, liens) via l'API interne ; seule écriture = `ContactRequest`, qui n'est pas du "contenu du site" au sens du principe (pas d'édition manuelle de données en prod, modèle versionné via migrations Drizzle) | PASS |
+| I. Sécurité by Design | Validation serveur (Zod) dans le Route Handler `POST /api/contact`, Cloudflare Turnstile vérifié serveur avant écriture, limite de fréquence par IP (Cloudflare KV, FR-020) en complément de Turnstile, aucun secret committé (variables d'environnement Wrangler pour D1/KV/Turnstile/email), pas de route d'admin dans cette feature (backoffice hors scope) | PASS |
+| II. Performance & Accessibilité | Server Components par défaut (JS minimal envoyé au client), Client Components React limités au filtre galerie/scroll infini et au formulaire de contact, `next/image` pour le lazy-loading/redimensionnement automatique, pagination serveur de la galerie (FR-018, payload initial réduit), Tailwind pour un HTML sémantique/accessible, audits Lighthouse/axe-core prévus dans quickstart.md | PASS |
+| III. Simplicité (YAGNI) | Un seul framework full-stack, un seul fournisseur d'hébergement/DB/KV (Cloudflare), pas de fonctionnalité hors périmètre spec (pas de multi-langue, pas d'e-commerce) ; rate limiting via KV natif plutôt qu'une file d'attente/service tiers ; stack limitée à Next.js/Drizzle/Tailwind/Zod | PASS |
+| IV. Séparation Front public / Backoffice | Cette feature ne fait que lire le contenu (compétitions, photos, infos club, liens) via l'API interne ; seules écritures = `ContactRequest` (D1) et le compteur de rate limiting (KV, éphémère), qui ne sont pas du "contenu du site" au sens du principe (pas d'édition manuelle de données en prod, modèle versionné via migrations Drizzle) ; la page politique de confidentialité est un texte statique du front, non gérée via le backoffice (assumption spec.md) | PASS |
 
-Aucune violation → section Complexity Tracking non renseignée.
+Aucune violation → section Complexity Tracking non renseignée. Réévaluation post-conception
+(Phase 1, intégrant FR-017–FR-021) : toujours PASS sur les 4 principes — voir détail par décision
+dans `research.md` §9–§13.
 
 ## Project Structure
 
@@ -89,23 +100,26 @@ src/
 │   ├── galerie/page.tsx                 # Galerie photo (US3)
 │   ├── liens-utiles/page.tsx            # Liens utiles (US4)
 │   ├── contact/page.tsx                 # Formulaire de contact (US4)
+│   ├── politique-de-confidentialite/page.tsx  # Politique de confidentialité (FR-019), texte statique
+│   ├── not-found.tsx                    # Page 404 personnalisée (FR-021, convention App Router)
 │   └── api/
 │       ├── club-info/route.ts
 │       ├── competitions/route.ts
 │       ├── photo-categories/route.ts
-│       ├── photos/route.ts
+│       ├── photos/route.ts              # paginé (cursor/limit, FR-018 — voir contracts/api.md)
 │       ├── useful-links/route.ts
-│       └── contact/route.ts
+│       └── contact/route.ts             # rate limit KV + Turnstile + email bloquant (FR-017, FR-020)
 ├── components/
 │   ├── layout/                          # Header, Footer, Nav (Server Components)
 │   ├── competitions/                    # Liste/carte compétition (Server Component)
-│   ├── gallery/                         # Grille photo (Server) + filtre catégorie (Client Component)
+│   ├── gallery/                         # Grille photo (Server) + filtre catégorie + scroll infini (Client Component)
 │   └── contact/                         # Formulaire + mention RGPD + Turnstile (Client Component)
 ├── lib/
 │   ├── db.ts                            # Client Drizzle + binding D1
 │   ├── validation.ts                    # Schémas Zod (dont ContactRequest)
 │   ├── turnstile.ts                     # Vérification serveur Cloudflare Turnstile
-│   └── email.ts                         # Notification email transactionnel
+│   ├── email.ts                         # Notification email transactionnel (envoi bloquant, FR-017)
+│   └── rate-limit.ts                    # Compteur KV par IP hachée, TTL 1h (FR-020)
 └── styles/
     └── globals.css                      # Tailwind
 
@@ -114,7 +128,7 @@ drizzle/
 │                                         # UsefulLink, ContactRequest
 └── migrations/
 
-wrangler.toml                            # Config Cloudflare Pages/Workers + binding D1
+wrangler.toml                            # Config Cloudflare Pages/Workers + bindings D1 et KV (rate limiting)
 open-next.config.ts                      # Config adapter OpenNext pour Cloudflare
 
 tests/

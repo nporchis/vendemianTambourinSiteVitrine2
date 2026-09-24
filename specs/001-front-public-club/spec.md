@@ -18,6 +18,14 @@
 - Q: La galerie photo doit-elle permettre de filtrer/regrouper les photos par événement ou catégorie, ou s'agit-il d'une simple liste chronologique sans regroupement ? → A: Regroupement par événement/catégorie
 - Q: Pour les compétitions passées, faut-il montrer un résultat (classement, score) en plus de la date/nom/lieu ? → A: Ajouter un résultat optionnel (classement/score)
 
+### Session 2026-09-23
+
+- Q: Si l'envoi de l'email de notification au club échoue après validation et enregistrement de la demande de contact, le visiteur doit-il quand même voir la confirmation de succès ? → A: Non — la confirmation n'est affichée que si l'email a été envoyé avec succès (message d'erreur explicite sinon)
+- Q: Le bouton « Charger plus de photos » de la galerie implique-t-il une pagination serveur réelle, ou un simple affichage progressif d'une liste déjà chargée ? → A: Pagination serveur réelle, déclenchée automatiquement au défilement (infinite scroll), sans clic supplémentaire
+- Q: La mention RGPD du formulaire de contact doit-elle renvoyer vers une page dédiée « Politique de confidentialité » ? → A: Oui — page publique statique dédiée, liée depuis la mention RGPD
+- Q: Le formulaire de contact doit-il appliquer une limite de fréquence (rate limiting) par IP en plus de Turnstile ? → A: Oui — limite de fréquence par adresse IP en complément de Turnstile
+- Q: Une page 404 personnalisée est-elle requise, ou la page par défaut du framework suffit-elle ? → A: Oui — page 404 personnalisée, dans le style du site, avec lien de retour vers l'accueil
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Découvrir le club (Priority: P1)
@@ -77,9 +85,12 @@ s'affichent correctement et restent lisibles/naviguables sur mobile.
 
 **Acceptance Scenarios**:
 
-1. **Given** des photos enregistrées, **When** un visiteur ouvre la galerie, **Then** il voit les
-   photos affichées de façon lisible, avec un chargement progressif si nécessaire.
-2. **Given** aucune photo enregistrée, **When** un visiteur ouvre la galerie, **Then** un message
+1. **Given** des photos enregistrées, **When** un visiteur ouvre la galerie, **Then** il voit une
+   première page de photos affichées de façon lisible.
+2. **Given** un visiteur qui a chargé la première page de photos, **When** il fait défiler la page
+   jusqu'au bas des photos déjà affichées, **Then** la page suivante de photos se charge
+   automatiquement, sans clic supplémentaire (FR-018).
+3. **Given** aucune photo enregistrée, **When** un visiteur ouvre la galerie, **Then** un message
    clair indique que la galerie sera bientôt disponible.
 
 ---
@@ -121,6 +132,17 @@ confirmation ou une erreur claire s'affiche.
 - Que se passe-t-il si un lien utile externe est cassé ou obsolète ? → hors scope technique de cette
   feature (dépend du contenu saisi côté backoffice), mais le lien doit s'ouvrir dans un nouvel
   onglet sans casser la navigation du site.
+- Que se passe-t-il si l'envoi de l'email de notification au club échoue alors que la demande de
+  contact a été validée ? → le visiteur voit un message d'erreur explicite (pas de confirmation de
+  succès), sans perte des champs déjà saisis (voir FR-017).
+- Que se passe-t-il lorsque le visiteur a fait défiler la galerie jusqu'à la dernière page de
+  photos disponible ? → le défilement ne déclenche plus de nouveau chargement, sans erreur ni
+  message intrusif (voir FR-018).
+- Que se passe-t-il si une même adresse IP dépasse la limite de fréquence de soumission du
+  formulaire de contact ? → un message d'erreur explicite indique que la limite est atteinte et
+  invite à réessayer plus tard, sans perte des champs déjà saisis (voir FR-020).
+- Que se passe-t-il si un visiteur accède à une URL inexistante ? → une page 404 personnalisée,
+  dans le style du site, s'affiche avec un lien de retour vers l'accueil (voir FR-021).
 
 ## Requirements *(mandatory)*
 
@@ -134,6 +156,9 @@ confirmation ou une erreur claire s'affiche.
   minimum un nom, une date et un lieu, en distinguant les événements à venir des événements passés.
 - **FR-004**: Le système DOIT afficher une galerie photo présentant des images du club et de ses
   événements.
+- **FR-018**: Le système DOIT charger les photos de la galerie par page côté serveur (pagination) et
+  charger automatiquement la page suivante lorsque le visiteur atteint le bas des photos déjà
+  affichées (défilement infini), sans action de clic supplémentaire.
 - **FR-005**: Le système DOIT afficher une page de liens utiles listant des ressources externes
   (fédération, partenaires, réseaux sociaux, etc.) avec un libellé et une URL.
 - **FR-006**: Le système DOIT fournir un moyen de contact permettant à un visiteur d'envoyer une
@@ -142,7 +167,8 @@ confirmation ou une erreur claire s'affiche.
   requis, format d'email) et afficher un message de confirmation en cas de succès ou un message
   d'erreur explicite en cas d'échec.
 - **FR-008**: Le système DOIT rendre l'ensemble des pages publiques listées (accueil, présentation,
-  calendrier, galerie, liens utiles, contact) consultables sans compte ni connexion.
+  calendrier, galerie, liens utiles, contact, politique de confidentialité) consultables sans
+  compte ni connexion.
 - **FR-009**: Le système DOIT afficher le contenu des pages (calendrier, galerie, informations du
   club, liens utiles, coordonnées) à partir de données pouvant être mises à jour sans modification
   du code du front public.
@@ -160,6 +186,19 @@ confirmation ou une erreur claire s'affiche.
   événement ou catégorie.
 - **FR-016**: Le système DOIT afficher, pour une compétition passée, un résultat (classement ou
   score) lorsque celui-ci est renseigné.
+- **FR-017**: Le système DOIT n'afficher le message de confirmation de succès de la demande de
+  contact que si l'email de notification au club a été envoyé avec succès ; en cas d'échec de cet
+  envoi, un message d'erreur explicite DOIT être affiché au visiteur, sans perte des champs déjà
+  saisis.
+- **FR-019**: Le système DOIT afficher une page publique dédiée présentant la politique de
+  confidentialité (usage et durée de conservation des données du formulaire de contact),
+  accessible sans authentification et liée depuis la mention RGPD du formulaire de contact
+  (FR-013).
+- **FR-020**: Le système DOIT limiter le nombre de soumissions du formulaire de contact acceptées
+  par adresse IP sur une fenêtre de temps glissante, en complément de la vérification anti-bot
+  Turnstile (FR-012), et retourner une erreur explicite au-delà de cette limite.
+- **FR-021**: Le système DOIT afficher une page 404 personnalisée, dans le style visuel du site,
+  pour toute URL inexistante, avec au minimum un lien de retour vers la page d'accueil.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -205,3 +244,9 @@ confirmation ou une erreur claire s'affiche.
   besoin de scalabilité massive.
 - Les photos de la galerie sont fournies dans un format déjà adapté au web ; leur optimisation lors
   de l'ajout (upload côté backoffice) est hors scope de cette feature front public.
+- Le contenu de la page « Politique de confidentialité » (FR-019) est un texte juridique statique,
+  non géré via le backoffice (contrairement au calendrier, à la galerie, aux infos du club et aux
+  liens utiles) ; il évolue au même rythme que le code du front public.
+- Le seuil exact de la limite de fréquence par IP du formulaire de contact (FR-020) n'est pas fixé
+  par cette spec ; à titre de point de départ raisonnable pour un club amateur (faible volume), 5
+  soumissions par heure et par IP est proposé, à affiner lors de `/speckit-plan` si besoin.

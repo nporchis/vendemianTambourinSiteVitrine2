@@ -54,23 +54,31 @@ Liste les catégories/événements disponibles pour le filtrage de la galerie.
 [{ "id": "string", "name": "string" }]
 ```
 
-## GET /api/photos?categoryId={id}
+## GET /api/photos?categoryId={id}&cursor={cursor}&limit={n}
 
-Liste les photos, filtrables par catégorie via le paramètre de requête optionnel `categoryId`.
+Liste les photos **paginées** (FR-018), filtrables par catégorie via le paramètre de requête
+optionnel `categoryId`. Tri par `createdAt DESC, id DESC` (voir `data-model.md`). `cursor` est le
+`nextCursor` reçu lors de l'appel précédent (absent pour la première page). `limit` est optionnel,
+défaut et maximum 12.
 
 **200 OK**
 ```json
-[
-  {
-    "id": "string",
-    "imageUrl": "string",
-    "caption": "string | null",
-    "categoryId": "string",
-    "takenOrEventDate": "2026-08-01T00:00:00.000Z | null"
-  }
-]
+{
+  "items": [
+    {
+      "id": "string",
+      "imageUrl": "string",
+      "caption": "string | null",
+      "categoryId": "string",
+      "takenOrEventDate": "2026-08-01T00:00:00.000Z | null"
+    }
+  ],
+  "nextCursor": "string | null"
+}
 ```
-Liste vide `[]` si aucune photo (état vide géré côté front, FR-011).
+`items: []` et `nextCursor: null` si aucune photo (état vide géré côté front, FR-011).
+`nextCursor: null` signale également la fin de la liste (plus rien à charger au défilement,
+voir Edge Case correspondant dans `spec.md`).
 
 ## GET /api/useful-links
 
@@ -81,8 +89,10 @@ Liste vide `[]` si aucune photo (état vide géré côté front, FR-011).
 
 ## POST /api/contact
 
-Soumet une demande de contact. Requiert un jeton Cloudflare Turnstile valide (FR-012) et l'accusé
-de réception de la mention RGPD (FR-013).
+Soumet une demande de contact. Requiert un jeton Cloudflare Turnstile valide (FR-012), l'accusé de
+réception de la mention RGPD (FR-013), et respecte une limite de fréquence par adresse IP (FR-020).
+La confirmation de succès n'est renvoyée que si l'email de notification au club a bien été envoyé
+(FR-017).
 
 **Request body**
 ```json
@@ -111,9 +121,24 @@ acquittée) :
 { "errors": { "captchaToken": "Vérification anti-bot échouée" } }
 ```
 
+**429 Too Many Requests** — limite de fréquence par IP dépassée (FR-020) :
+```json
+{ "errors": { "rateLimit": "Trop de demandes envoyées récemment, merci de réessayer plus tard." } }
+```
+
+**502 Bad Gateway** — demande validée et enregistrée, mais l'envoi de l'email de notification au
+club a échoué (FR-017) ; la confirmation de succès n'est donc pas renvoyée, bien que la demande
+reste persistée côté serveur :
+```json
+{ "errors": { "notification": "Votre demande n'a pas pu être transmise, merci de réessayer." } }
+```
+
 **Comportement serveur** (principe I — Sécurité by Design) :
-1. Valider tous les champs (voir `data-model.md` → ContactRequest).
-2. Vérifier `captchaToken` auprès de l'API Cloudflare Turnstile (`siteverify`) avant tout traitement.
-3. Enregistrer la demande avec `submittedAt` et `purgeAt = submittedAt + 12 mois`.
-4. Envoyer une notification email au club.
-5. Retourner la confirmation au client.
+1. Vérifier la limite de fréquence par IP (Cloudflare KV, FR-020) — `429` si dépassée.
+2. Valider tous les champs (voir `data-model.md` → ContactRequest) — `400` si invalide.
+3. Vérifier `captchaToken` auprès de l'API Cloudflare Turnstile (`siteverify`) — `403` si échec.
+4. Enregistrer la demande avec `submittedAt` et `purgeAt = submittedAt + 12 mois`.
+5. Envoyer une notification email au club, **en l'attendant** (appel bloquant).
+6. Si l'envoi échoue : renseigner `notificationSentAt = null`, retourner `502` (la demande reste
+   enregistrée, voir `research.md` §11). Si l'envoi réussit : renseigner `notificationSentAt =
+   now()`, retourner `201` avec la confirmation.

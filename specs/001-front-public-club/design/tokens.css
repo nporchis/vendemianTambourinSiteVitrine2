@@ -1,0 +1,160 @@
+/**
+ * Vendémian Tambourin — design tokens
+ *
+ * Extraits des maquettes validées (canvas Claude Design, direction "Fronton dynamique") :
+ * Main / Presentation / Calendrier / Galerie / LiensUtiles / Contact.
+ * Documentation et usages : ../design-system.md
+ *
+ * Destiné à `src/styles/globals.css` (tâche T002). Syntaxe Tailwind CSS v4 (`@theme`) :
+ * chaque token génère les utilitaires correspondants (bg-vt-ink, text-vt-yellow, font-display…).
+ * Pour Tailwind v3, voir l'annexe « Variante Tailwind v3 » dans design-system.md.
+ */
+
+@import "tailwindcss";
+
+@theme {
+  /* ---------------------------------------------------------------- Couleurs
+   * Palette relevée sur la photo du Fronton Vendémianais (brique, ombre, maillot).
+   */
+
+  /* Marque */
+  --color-vt-ink: #1c1b18; /* noir chaud : header, footer, bandeaux, fonds sombres */
+  --color-vt-terracotta: #b5433a; /* brique : liens, accents, chip "défaite" */
+  --color-vt-terracotta-hover: #8a3229;
+  --color-vt-yellow: #f0c419; /* jaune maillot : CTA, eyebrow, lien actif, tag "à venir" */
+  --color-vt-yellow-hover: #d9b016;
+  --color-vt-cream: #f2ede0; /* crème : texte sur sombre, cartes « passées » */
+
+  /* Fonds */
+  --color-vt-bg: #f7f3ea; /* fond de page clair */
+  --color-vt-surface: #ffffff; /* cartes, champs de formulaire */
+  --color-vt-surface-muted: #f2ede0; /* cartes désaturées (compétitions passées), encadré Turnstile */
+  --color-vt-surface-dark: #1c1b18; /* blocs sombres (encadrement, carte contact) */
+
+  /* Texte sur fond clair */
+  --color-vt-text: #1c1b18; /* titres, texte fort */
+  --color-vt-text-prose: #3a362e; /* paragraphes longs */
+  --color-vt-text-secondary: #5c574a; /* labels, métadonnées, texte de carte */
+  --color-vt-text-muted: #6b6657; /* texte tertiaire (corrige #7a7566, insuffisant sur crème) */
+  --color-vt-text-muted-large: #7a7566; /* réservé au texte ≥ 24px ou ≥ 18.7px gras */
+
+  /* Texte sur fond sombre */
+  --color-vt-text-on-dark: #e4dfd0; /* corps de texte */
+  --color-vt-text-on-dark-strong: #f2ede0; /* titres */
+  --color-vt-text-on-dark-muted: #9b9686; /* footer */
+
+  /* Bordures */
+  --color-vt-border: rgb(28 27 24 / 0.1); /* cartes */
+  --color-vt-border-strong: rgb(28 27 24 / 0.18); /* champs, chips inactives */
+  --color-vt-border-subtle: rgb(28 27 24 / 0.08); /* cartes désaturées, séparateurs */
+  --color-vt-border-on-dark: rgb(242 237 224 / 0.12); /* séparateurs sur fond sombre */
+  --color-vt-border-header: rgb(242 237 224 / 0.08); /* filet sous le header solide */
+
+  /* Placeholders de la galerie (tuiles sans photo) */
+  --color-vt-tile-1: #b5433a;
+  --color-vt-tile-2: #8a8574;
+  --color-vt-tile-3: #3a362e;
+  --color-vt-tile-4: #c9a227;
+  --color-vt-tile-5: #6b655a;
+
+  /* ------------------------------------------------------------ Typographie
+   * Barlow Condensed = titres (uppercase) et libellés de boutons/chips.
+   * Barlow = corps de texte. Chargées via next/font (voir design-system.md §2).
+   */
+  --font-display: "Barlow Condensed", system-ui, sans-serif;
+  --font-sans: "Barlow", system-ui, sans-serif;
+
+  --text-hero: 4.25rem; /* 68px — H1 de la home */
+  --text-hero--line-height: 0.95;
+  --text-page-title: 3.25rem; /* 52px — H1 des pages intérieures */
+  --text-page-title--line-height: 1;
+  --text-section: 1.875rem; /* 30px — H2 de section */
+  --text-subsection: 1.375rem; /* 22px — H2 de sous-groupe */
+  --text-card-title: 1.1875rem; /* 19px — H3 de carte */
+  --text-lead: 1.0625rem; /* 17px — chapô */
+  --text-lead--line-height: 1.6;
+  --text-body: 1rem; /* 16px */
+  --text-body--line-height: 1.75;
+  --text-ui: 0.9375rem; /* 15px — nav, champs, boutons */
+  --text-meta: 0.875rem; /* 14px — métadonnées, chips */
+  --text-small: 0.8125rem; /* 13px — eyebrow, footer, labels */
+  --text-micro: 0.6875rem; /* 11px — tags */
+
+  --tracking-eyebrow: 0.14em;
+  --tracking-label: 0.04em;
+  --tracking-ui: 0.02em;
+
+  /* ------------------------------------------------------------------ Formes */
+  --radius-control: 4px; /* boutons, champs, chips de résultat */
+  --radius-card: 6px; /* cartes, images, blocs sombres */
+  --radius-icon: 8px; /* pastille d'icône */
+  --radius-pill: 999px; /* chips de filtre, tags */
+
+  /* ------------------------------------------------------- Ombres & overlays
+   * Design volontairement plat : aucune ombre dans les maquettes.
+   * `--shadow-vt-card-hover` est un ajout pour l'état hover (non maquetté).
+   */
+  --shadow-vt-card-hover: 0 2px 8px rgb(28 27 24 / 0.06);
+}
+
+@layer base {
+  :root {
+    /* Dégradé du hero plein écran (Main) : lisibilité du texte sur la photo */
+    --vt-hero-overlay: linear-gradient(
+      180deg,
+      rgb(20 17 13 / 0.75) 0%,
+      rgb(20 17 13 / 0.25) 30%,
+      rgb(20 17 13 / 0.55) 65%,
+      rgb(20 17 13 / 0.95) 100%
+    );
+    /* Dégradé des vignettes légendées (Galerie, Présentation) */
+    --vt-image-caption-overlay: linear-gradient(
+      180deg,
+      rgb(20 17 13 / 0) 60%,
+      rgb(20 17 13 / 0.7) 100%
+    );
+  }
+
+  body {
+    background-color: var(--color-vt-bg);
+    color: var(--color-vt-text);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+  }
+
+  a {
+    color: var(--color-vt-terracotta);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--color-vt-terracotta-hover);
+  }
+
+  /* Focus visible — absent des maquettes, requis par la constitution (WCAG AA). */
+  :focus-visible {
+    outline: 2px solid var(--color-vt-ink);
+    outline-offset: 2px;
+  }
+
+  .vt-on-dark :focus-visible,
+  .vt-hero :focus-visible {
+    outline-color: var(--color-vt-yellow);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

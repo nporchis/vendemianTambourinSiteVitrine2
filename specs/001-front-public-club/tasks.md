@@ -42,7 +42,8 @@ Projet Next.js (App Router) unique (voir `plan.md` → Project Structure) :
 - [ ] T003 [P] Installer Drizzle ORM + `drizzle-kit`, créer `drizzle.config.ts` ciblant un binding
       D1 nommé `DB`
 - [ ] T004 [P] Créer `wrangler.toml` : projet Pages/Workers, binding D1 `DB` (base créée via
-      `wrangler d1 create vt-site-db`), configuration du Cron Trigger de purge (voir T051)
+      `wrangler d1 create vt-site-db`), binding KV `RATE_LIMIT_KV` (namespace créé via `wrangler
+      kv:namespace create RATE_LIMIT_KV`, FR-020), configuration du Cron Trigger de purge (voir T051)
 - [ ] T005 [P] Configurer ESLint + Prettier pour TypeScript/Next.js (`.eslintrc`, `.prettierrc`)
 - [ ] T006 [P] Installer l'outillage de test : Vitest, Playwright, `@axe-core/playwright` ; ajouter
       les scripts npm `test`, `test:e2e` et `preview` (build OpenNext + `wrangler pages dev`) dans
@@ -67,7 +68,8 @@ stories
         compétition passée)
       - `photo_category` : `id` (UUID, PK), `name` (requis, unique)
       - `photo` : `id` (UUID, PK), `image_url` (requis), `caption` (nullable), `category_id` (FK →
-        `photo_category`, requis), `taken_or_event_date` (datetime, nullable)
+        `photo_category`, requis), `taken_or_event_date` (datetime, nullable), `created_at`
+        (datetime, généré serveur à l'insertion, clé de tri pour la pagination par curseur FR-018)
       - `club_info` : `id` (PK fixe, singleton), `history_text` (requis), `values` (requis),
         `team_info` (nullable), `contact_email` (requis, format email), `contact_phone`
         (nullable), `social_links` (JSON array `{label, url}`, optionnel)
@@ -76,7 +78,9 @@ stories
       - `contact_request` : `id` (UUID, PK), `name` (requis), `email` (requis, format email),
         `message` (requis), `submitted_at` (datetime, généré serveur), `captcha_verified`
         (boolean, doit être `true` avant tout enregistrement), `rgpd_notice_acknowledged`
-        (boolean, doit être `true`), `purge_at` (datetime = `submitted_at` + 12 mois)
+        (boolean, doit être `true`), `purge_at` (datetime = `submitted_at` + 12 mois),
+        `notification_sent_at` (datetime, nullable — renseigné si l'email de notification a été
+        envoyé avec succès, `null` sinon ; FR-017)
 - [ ] T009 Générer et appliquer la migration initiale (`npx drizzle-kit generate` puis
       `npx drizzle-kit migrate`) dans `drizzle/migrations/`
 - [ ] T010 [P] Implémenter le client Drizzle + accès au binding D1 dans `src/lib/db.ts`
@@ -85,11 +89,13 @@ stories
 - [ ] T012 [P] Créer le layout racine `src/app/layout.tsx` (Server Component : HTML sémantique,
       meta, lien d'évitement clavier, structure WCAG AA)
 - [ ] T013 [P] Créer les composants de layout `src/components/layout/Header.tsx` (Server Component :
-      nom du club, navigation vers les 6 pages publiques) et `src/components/layout/Footer.tsx`
+      navigation vers les 6 pages publiques principales) et `src/components/layout/Footer.tsx`
+      (ajoute un lien vers `/politique-de-confidentialite`, FR-019, en plus des liens existants)
 - [ ] T014 [P] Créer le helper de réponse API `src/lib/api-response.ts` implémentant le format
       d'erreur standard `{ "errors": { "<champ>": "<message>" } }` de `contracts/api.md`
 - [ ] T015 Créer le script de seed `scripts/seed.ts` (exposé via `npm run seed`) : 1 compétition à
-      venir, 1 compétition passée avec `result` renseigné, 2 `photo_category`, 3 `photo`, 1
+      venir, 1 compétition passée avec `result` renseigné, 2 `photo_category`, 14 `photo` (avec
+      `created_at` échelonnés, pour exercer la pagination FR-018 sur au moins 2 pages), 1
       `club_info`, 2 `useful_link` (jeu de données de `quickstart.md`)
 
 **Checkpoint**: Schéma, DB, layout et validation partagés prêts — les user stories peuvent démarrer
@@ -175,18 +181,22 @@ vérifier le message d'état vide
 
 ## Phase 5: User Story 3 - Parcourir la galerie photo (Priority: P2)
 
-**Goal**: Afficher les photos du club regroupées/filtrables par événement ou catégorie, avec
-chargement progressif et état vide explicite (FR-004, FR-011, FR-015)
+**Goal**: Afficher les photos du club regroupées/filtrables par événement ou catégorie, paginées
+côté serveur avec chargement automatique au défilement, et état vide explicite (FR-004, FR-011,
+FR-015, FR-018)
 
 **Independent Test**: Ouvrir `/galerie`, vérifier l'affichage lisible et le lazy-loading, filtrer
-par catégorie, puis vider la table `Photo` et vérifier le message d'état vide
+par catégorie, faire défiler jusqu'à charger une page suivante automatiquement, puis vider la table
+`Photo` et vérifier le message d'état vide
 
 ### Tests for User Story 3
 
 - [ ] T029 [P] [US3] Test E2E Playwright `tests/e2e/galerie.spec.ts` : photos affichées avec
       lazy-loading (vérifier le comportement `next/image` / throttling réseau) ; filtre par
-      catégorie ne montre que les photos de la catégorie sélectionnée (FR-015) ; table vidée →
-      message d'état vide (FR-011) ; audit `@axe-core/playwright`
+      catégorie ne montre que les photos de la catégorie sélectionnée (FR-015) ; défilement jusqu'au
+      bas des photos déjà affichées déclenche le chargement automatique de la page suivante, sans
+      clic, et le défilement au-delà de la dernière page ne déclenche plus d'appel (`nextCursor:
+      null`) (FR-018) ; table vidée → message d'état vide (FR-011) ; audit `@axe-core/playwright`
 
 ### Implementation for User Story 3
 
@@ -195,19 +205,32 @@ par catégorie, puis vider la table `Photo` et vérifier le message d'état vide
       optionnels) dans `src/lib/validation.ts`
 - [ ] T031 [US3] Implémenter `GET /api/photo-categories` dans
       `src/app/api/photo-categories/route.ts`
-- [ ] T032 [US3] Implémenter `GET /api/photos` dans `src/app/api/photos/route.ts` avec filtrage
-      optionnel par le paramètre de requête `categoryId`, retourne `[]` si aucune photo (FR-011)
+- [ ] T031a [P] [US3] Implémenter les helpers de curseur opaque dans `src/lib/pagination.ts` :
+      `encodeCursor({createdAt, id})` / `decodeCursor(string)` en base64, tri de référence
+      `createdAt DESC, id DESC` (FR-018, `research.md` §9)
+- [ ] T032 [US3] Implémenter `GET /api/photos` dans `src/app/api/photos/route.ts` (dépend de T031a)
+      avec filtrage optionnel par le paramètre de requête `categoryId`, pagination par curseur
+      (`cursor`, `limit` — défaut et max 12) triée `created_at DESC, id DESC`, retourne
+      `{ items: [...], nextCursor }` avec `items: []` et `nextCursor: null` si aucune photo (FR-011,
+      FR-018, voir `contracts/api.md`)
 - [ ] T033 [P] [US3] Configurer un loader d'image personnalisé compatible Cloudflare (Images/R2)
       pour `next/image` dans `next.config.ts` (l'optimisation d'image native n'étant pas disponible
       telle quelle sur Workers, cf. `research.md` §8)
 - [ ] T034 [P] [US3] Créer `src/components/gallery/GalleryGrid.tsx` (Server Component) : grille de
-      photos utilisant `next/image` pour le lazy-loading, groupées visuellement par catégorie
+      photos utilisant `next/image` pour le lazy-loading, groupées visuellement par catégorie,
+      reçoit la première page (`items`, `nextCursor`) en props
+- [ ] T034a [P] [US3] Créer `src/components/gallery/InfiniteScrollTrigger.tsx` (`"use client"`,
+      Client Component React) : sentinelle observée via `IntersectionObserver`, déclenche
+      automatiquement l'appel `GET /api/photos?cursor=...` (page suivante) quand elle entre dans le
+      viewport, ajoute les photos reçues à la grille, cesse tout appel quand `nextCursor: null`,
+      sans action de clic (FR-018)
 - [ ] T035 [P] [US3] Créer `src/components/gallery/CategoryFilter.tsx` (`"use client"`, Client
       Component React) : filtre les photos affichées par `categoryId` sans rechargement de page
       (FR-015)
 - [ ] T036 [US3] Implémenter `src/app/galerie/page.tsx` (FR-004, Server Component) : consomme `GET
-      /api/photo-categories` et `GET /api/photos`, intègre `GalleryGrid` et `CategoryFilter`,
-      affiche un état vide explicite si aucune photo (FR-011)
+      /api/photo-categories` et la première page de `GET /api/photos`, intègre `GalleryGrid`,
+      `InfiniteScrollTrigger` et `CategoryFilter`, affiche un état vide explicite si aucune photo
+      (FR-011)
 
 **Checkpoint**: US1, US2 et US3 fonctionnelles indépendamment
 
@@ -216,12 +239,16 @@ par catégorie, puis vider la table `Photo` et vérifier le message d'état vide
 ## Phase 6: User Story 4 - Trouver des liens utiles et contacter le club (Priority: P3)
 
 **Goal**: Lister les liens utiles externes et permettre l'envoi d'une demande de contact validée,
-protégée anti-bot, avec mention RGPD et purge automatique à 12 mois (FR-005, FR-006, FR-007,
-FR-012, FR-013, FR-014)
+protégée anti-bot et par une limite de fréquence par IP, avec mention RGPD (liée à une page
+politique de confidentialité), confirmation conditionnée à l'envoi effectif de l'email de
+notification, et purge automatique à 12 mois (FR-005, FR-006, FR-007, FR-012, FR-013, FR-014,
+FR-017, FR-019, FR-020)
 
 **Independent Test**: Ouvrir `/liens-utiles` et vérifier l'ouverture des liens en nouvel onglet ;
 soumettre `/contact` avec des données valides + Turnstile → confirmation ; soumettre avec un email
-invalide → erreur explicite sans perte de saisie
+invalide → erreur explicite sans perte de saisie ; dépasser la limite de fréquence par IP → erreur
+429 ; simuler un échec d'envoi email → erreur explicite sans confirmation, demande tout de même
+persistée ; ouvrir la page politique de confidentialité depuis le lien de la mention RGPD
 
 ### Tests for User Story 4
 
@@ -230,12 +257,21 @@ invalide → erreur explicite sans perte de saisie
       `@axe-core/playwright`
 - [ ] T038 [P] [US4] Test E2E Playwright `tests/e2e/contact.spec.ts` : soumission valide + challenge
       Turnstile → message de confirmation ; soumission avec email invalide ou champ requis manquant
-      → message d'erreur explicite, autres champs conservés ; mention RGPD visible avant envoi ;
-      audit `@axe-core/playwright`
+      → message d'erreur explicite, autres champs conservés ; mention RGPD visible avant envoi et
+      son lien mène vers `/politique-de-confidentialite` (FR-019) ; audit `@axe-core/playwright`
+- [ ] T038a [P] [US4] Test E2E Playwright `tests/e2e/politique-confidentialite.spec.ts` : page
+      accessible sans authentification, contenu présent (usage et durée de conservation des données,
+      FR-019) ; audit `@axe-core/playwright`
 - [ ] T039 [P] [US4] Test d'intégration Vitest `tests/integration/contact-api.test.ts` :
-      `POST /api/contact` contre une D1 de test — 201 si données valides + Turnstile vérifié ; 400
-      si champ requis manquant/email invalide ; 403 si Turnstile invalide ; vérifie que la ligne
-      `contact_request` créée a `purge_at = submitted_at + 12 mois`
+      `POST /api/contact` contre une D1 de test — 201 si données valides + Turnstile vérifié, avec
+      `notification_sent_at` renseigné ; 400 si champ requis manquant/email invalide ; 403 si
+      Turnstile invalide ; 502 si l'envoi email échoue (provider mocké en erreur) — la ligne
+      `contact_request` reste créée avec `notification_sent_at = null` (FR-017) ; vérifie que la
+      ligne `contact_request` créée a `purge_at = submitted_at + 12 mois`
+- [ ] T039a [P] [US4] Test d'intégration Vitest `tests/integration/contact-rate-limit.test.ts` :
+      `POST /api/contact` depuis la même IP simulée (en-tête `CF-Connecting-IP`) au-delà du seuil
+      configuré (5/heure) retourne 429 sur la requête excédentaire ; une IP différente n'est pas
+      affectée par le compteur de la première (FR-020)
 - [ ] T040 [P] [US4] Test unitaire Vitest `tests/unit/purge-contact-requests.test.ts` : la logique
       de purge supprime uniquement les `contact_request` dont `purge_at <= now`
 
@@ -253,19 +289,34 @@ invalide → erreur explicite sans perte de saisie
       `src/lib/turnstile.ts` (appel `siteverify` avec `TURNSTILE_SECRET_KEY`)
 - [ ] T046 [P] [US4] Implémenter l'envoi de notification email transactionnel dans
       `src/lib/email.ts` (provider externe, ex. Resend, via `EMAIL_PROVIDER_API_KEY` et
-      `CLUB_NOTIFICATION_EMAIL`)
+      `CLUB_NOTIFICATION_EMAIL`), appel bloquant (`await`) avec un timeout explicite (10s) permettant
+      de détecter et propager un échec d'envoi au Route Handler (FR-017, `research.md` §11)
+- [ ] T046a [P] [US4] Implémenter la limite de fréquence par IP dans `src/lib/rate-limit.ts` :
+      hacher l'IP (`CF-Connecting-IP`) en SHA-256, incrémenter le compteur `RATE_LIMIT_KV` (clé
+      `contact:{ipHash}`, TTL 3600s), retourner si la requête courante dépasse le seuil (5 par
+      défaut, ajustable) (FR-020, `research.md` §10)
 - [ ] T047 [US4] Implémenter `POST /api/contact` dans `src/app/api/contact/route.ts` (dépend de
-      T044, T045, T046) : valider les champs (400 si invalide, format `{errors: {...}}`), vérifier
-      `captchaToken` via `src/lib/turnstile.ts` (403 si échec), calculer `purgeAt = submittedAt +
-      12 mois`, insérer via `src/lib/db.ts`, notifier par email, retourner `201` avec confirmation
+      T044, T045, T046, T046a) dans cet ordre : (1) vérifier la limite de fréquence via
+      `src/lib/rate-limit.ts` (429 si dépassée, FR-020), (2) valider les champs (400 si invalide,
+      format `{errors: {...}}`), (3) vérifier `captchaToken` via `src/lib/turnstile.ts` (403 si
+      échec), (4) calculer `purgeAt = submittedAt + 12 mois` et insérer via `src/lib/db.ts`, (5)
+      envoyer l'email via `src/lib/email.ts` en l'attendant — si l'envoi échoue, renseigner
+      `notificationSentAt = null` et retourner `502` sans annuler l'insertion D1 ; si l'envoi
+      réussit, renseigner `notificationSentAt = now()` et retourner `201` avec confirmation (FR-017)
+- [ ] T047a [P] [US4] Implémenter `src/app/politique-de-confidentialite/page.tsx` (FR-019, Server
+      Component) : contenu statique présentant l'usage et la durée de conservation (12 mois, FR-014)
+      des données du formulaire de contact
 - [ ] T048 [P] [US4] Créer `src/components/contact/RgpdNotice.tsx` (Server Component) : mention
-      d'information RGPD affichée à la saisie du formulaire (FR-013)
+      d'information RGPD affichée à la saisie du formulaire (FR-013), incluant un lien vers
+      `/politique-de-confidentialite` (FR-019)
 - [ ] T049 [US4] Créer `src/components/contact/ContactForm.tsx` (`"use client"`, Client Component
       React) : champs nom/email/message, widget Turnstile, intègre `RgpdNotice`, validation côté
       client avant envoi, affichage des erreurs serveur sans perte des champs déjà saisis (Edge
       Case)
 - [ ] T050 [US4] Implémenter `src/app/contact/page.tsx` (FR-006, Server Component) : intègre
-      `ContactForm` et `RgpdNotice`, affiche la confirmation après succès
+      `ContactForm` et `RgpdNotice`, affiche la confirmation après succès (`201`) ou un message
+      d'erreur explicite en cas de `429` (limite de fréquence, FR-020) ou `502` (échec d'envoi email,
+      FR-017), sans perte des champs déjà saisis
 - [ ] T051 [US4] Implémenter le job de purge planifié `src/scheduled/purge-contact-requests.ts`
       (Cloudflare Cron Trigger, déclenché via le handler `scheduled` d'OpenNext) : supprime les
       `contact_request` où `purge_at <= now` (FR-014), référencé dans `wrangler.toml` (voir T004)
@@ -280,20 +331,27 @@ invalide → erreur explicite sans perte de saisie
 
 - [ ] T052 [P] Exécuter `npm run test` (Vitest) et `npm run test:e2e` (Playwright) sur l'ensemble
       des suites et corriger les échecs
-- [ ] T053 [P] Exécuter l'audit Lighthouse mobile (`npx lighthouse ... --preset=mobile`) sur les 6
+- [ ] T053 [P] Exécuter l'audit Lighthouse mobile (`npx lighthouse ... --preset=mobile`) sur les 8
       pages publiques (via `npm run preview`) et vérifier les seuils "Good" (LCP < 2.5s, INP <
       200ms, CLS < 0.1, SC-002)
 - [ ] T053a [P] Ajouter des assertions de layout responsive dans les suites Playwright existantes
       (`tests/e2e/discover-club.spec.ts`, `calendrier.spec.ts`, `galerie.spec.ts`,
-      `liens-utiles.spec.ts`, `contact.spec.ts`) sur 3 viewports (mobile 375px, tablette 768px,
-      desktop 1280px) : pas de débordement horizontal, navigation utilisable, contenu principal
-      visible sans perte de fonctionnalité (FR-010, SC-004)
+      `liens-utiles.spec.ts`, `contact.spec.ts`, `politique-confidentialite.spec.ts`,
+      `not-found.spec.ts`) sur 3 viewports (mobile 375px, tablette 768px, desktop 1280px) : pas de
+      débordement horizontal, navigation utilisable, contenu principal visible sans perte de
+      fonctionnalité (FR-010, SC-004)
 - [ ] T054 [P] Vérifier l'absence de violations critiques WCAG AA (rapport axe-core agrégé des
-      suites E2E) sur les 6 pages publiques
+      suites E2E) sur les 8 pages publiques
 - [ ] T055 Vérifier qu'aucun secret n'est committé (`.dev.vars` ignoré par git, secrets déclarés
       via `wrangler secret` en production) — principe I de la constitution
 - [ ] T056 Exécuter l'ensemble des scénarios de `quickstart.md` manuellement via `npm run preview`
       (`wrangler pages dev` après build OpenNext) et confirmer chaque résultat attendu
+- [ ] T056a [P] Test E2E Playwright `tests/e2e/not-found.spec.ts` : une URL inexistante affiche la
+      page 404 personnalisée dans le style du site, avec un lien de retour vers l'accueil (FR-021) ;
+      audit `@axe-core/playwright`
+- [ ] T056b [P] Implémenter `src/app/not-found.tsx` (FR-021, Server Component, convention Next.js
+      App Router) : réutilise `Header`/`Footer`, message explicite « page introuvable » et lien de
+      retour vers `/`
 
 ---
 
@@ -320,8 +378,21 @@ invalide → erreur explicite sans perte de saisie
 
 - Tests (E2E/unitaires/intégration) avant l'implémentation correspondante
 - Schémas Zod avant les Route Handlers API
+- `src/lib/pagination.ts` (T031a) avant `GET /api/photos` (T032)
+- `src/lib/rate-limit.ts` (T046a), `src/lib/turnstile.ts` (T045) et `src/lib/email.ts` (T046) avant
+  `POST /api/contact` (T047)
 - Route Handlers API avant les pages qui les consomment
 - Composants avant la page qui les intègre
+
+### Nouvelles tâches issues des clarifications FR-017–FR-021 (2026-09-23)
+
+- **FR-018** (pagination galerie) : T008 (schéma `created_at`), T031a, T032, T034, T034a, T036,
+  T029, T015 (seed 14 photos)
+- **FR-020** (rate limiting) : T004 (binding KV), T046a, T039a, T047
+- **FR-017** (confirmation liée à l'email) : T008 (schéma `notification_sent_at`), T046, T047, T050,
+  T039, T038
+- **FR-019** (politique de confidentialité) : T013 (footer), T047a, T048, T038a
+- **FR-021** (404 personnalisée) : T056a, T056b
 
 ### Parallel Opportunities
 
