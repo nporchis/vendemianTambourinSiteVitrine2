@@ -1,13 +1,9 @@
 /**
- * Vendémian Tambourin — design tokens
+ * Vendémian Tambourin — styles globaux (T002)
  *
- * Extraits des maquettes validées (canvas Claude Design, direction "Fronton dynamique") :
- * Main / Presentation / Calendrier / Galerie / LiensUtiles / Contact.
- * Documentation et usages : ../design-system.md
- *
- * Destiné à `src/styles/globals.css` (tâche T002). Syntaxe Tailwind CSS v4 (`@theme`) :
- * chaque token génère les utilitaires correspondants (bg-vt-ink, text-vt-yellow, font-display…).
- * Pour Tailwind v3, voir l'annexe « Variante Tailwind v3 » dans design-system.md.
+ * Tokens repris de specs/001-front-public-club/design/tokens.css (source de vérité, voir
+ * design-system.md). Les familles Barlow / Barlow Condensed sont chargées par next/font
+ * (src/app/layout.tsx) qui expose --font-barlow et --font-barlow-condensed.
  */
 
 @import "tailwindcss";
@@ -61,8 +57,8 @@
    * Barlow Condensed = titres (uppercase) et libellés de boutons/chips.
    * Barlow = corps de texte. Chargées via next/font (voir design-system.md §2).
    */
-  --font-display: "Barlow Condensed", system-ui, sans-serif;
-  --font-sans: "Barlow", system-ui, sans-serif;
+  --font-display: var(--font-barlow-condensed), "Barlow Condensed", system-ui, sans-serif;
+  --font-sans: var(--font-barlow), "Barlow", system-ui, sans-serif;
 
   /* Titres géants v11 : clamp(mobile, fluide, desktop) — voir design-system.md §2 */
   --text-hero: clamp(2.75rem, 5vw + 1rem, 5.5rem); /* 44 → 88px — H1 de la home */
@@ -167,4 +163,83 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+/* ------------------------------------------------------------------ Composants de base */
+@layer components {
+  /* Mot surligné des titres géants (design-system.md §2) : emphase sémantique <em>. */
+  em.vt-hl {
+    font-style: normal;
+    /* Aplat limité à ~la hauteur des capitales : avec un interligne < 1, un fond inline
+       plein déborderait sur la ligne du dessus. */
+    background: linear-gradient(var(--color-vt-yellow), var(--color-vt-yellow)) 0 62% / 100% 0.9em
+      no-repeat;
+    color: var(--color-vt-ink);
+    padding: 0 0.08em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  /* Chiffre jaune contouré (en-têtes de section, règles du tambourin). */
+  .vt-stroke {
+    color: var(--color-vt-yellow);
+    -webkit-text-stroke: 1.5px var(--color-vt-ink);
+  }
+
+  /* Lien d'évitement « Aller au contenu » (design-system.md §6). */
+  .vt-skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -100px;
+    z-index: 100;
+    background: var(--color-vt-yellow);
+    color: var(--color-vt-ink);
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-control);
+    font-weight: 700;
+  }
+  .vt-skip-link:focus {
+    top: 1rem;
+    color: var(--color-vt-ink);
+  }
+
+  /* Squelette de chargement de la galerie : pulse désactivé sous prefers-reduced-motion. */
+  .vt-skeleton {
+    background: #e4dfd0;
+    animation: vt-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes vt-pulse {
+    50% {
+      background: #eae5d7;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .vt-skeleton {
+      animation: none;
+    }
+  }
+}
+
+/* Gouttière de page : 20px mobile, 24px tablette, 40px desktop (design-system.md §5). */
+@utility vt-gutter {
+  padding-inline: 1.25rem;
+  @media (min-width: 768px) {
+    padding-inline: 1.5rem;
+  }
+  @media (min-width: 1024px) {
+    padding-inline: 2.5rem;
+  }
+}
+
+/* Conteneur de contenu : max 1200px (+ gouttières) centré. */
+@utility vt-container {
+  width: 100%;
+  max-width: calc(1200px + 5rem);
+  margin-inline: auto;
+}
+
+/* Texte décoratif (chiffres contourés) : rendu via ::before pour rester hors de l'arbre
+   d'accessibilité et des calculs de contraste — l'information est portée par le titre voisin. */
+[data-deco]::before {
+  content: attr(data-deco);
 }

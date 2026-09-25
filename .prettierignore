@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.open-next/
+.wrangler/
+coverage/
+drizzle/migrations/
+package-lock.json
+specs/
+playwright-report/
+test-results/
+AGENTS.md
+CLAUDE.md
+cloudflare-env.d.ts
+.specify/
+.claude/

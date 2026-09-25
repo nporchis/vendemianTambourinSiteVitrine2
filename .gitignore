@@ -17,3 +17,6 @@ next-env.d.ts
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+playwright-report/
+test-results/
+/scripts/.seed.sql

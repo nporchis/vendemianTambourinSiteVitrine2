@@ -1,0 +1,37 @@
+# Configuration Cloudflare Workers (T004) — build via `opennextjs-cloudflare build`.
+name = "vt-site"
+main = "custom-worker.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Optimisation des images `next/image` (research.md §8, T033)
+[images]
+binding = "IMAGES"
+
+# Base de données : `wrangler d1 create vt-site-db`, puis reporter l'id ci-dessous.
+[[d1_databases]]
+binding = "DB"
+database_name = "vt-site-db"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "drizzle/migrations"
+
+# Limite de fréquence du formulaire de contact (FR-020) :
+# `wrangler kv namespace create RATE_LIMIT_KV`, puis reporter l'id ci-dessous.
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "00000000000000000000000000000000"
+
+# Purge quotidienne des demandes de contact de plus de 12 mois (FR-014, T051)
+[triggers]
+crons = ["0 3 * * *"]
+
+# Secrets (jamais committés) : `wrangler secret put <NOM>` en production, `.dev.vars` en local.
+# TURNSTILE_SECRET_KEY, EMAIL_PROVIDER_API_KEY — voir .dev.vars.example
+[vars]
+TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
+CLUB_NOTIFICATION_EMAIL = "contact@vendemian-tambourin.fr"
+EMAIL_FROM = "Site Vendémian Tambourin <site@vendemian-tambourin.fr>"

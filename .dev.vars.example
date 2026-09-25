@@ -1,0 +1,12 @@
+# Copier en `.dev.vars` (ignoré par git) pour le développement local.
+# En production : `wrangler secret put <NOM>` pour les secrets.
+
+# Cloudflare Turnstile — clés de test officielles (toujours valides) ci-dessous ;
+# remplacer par les clés du site en production.
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+
+# Provider email transactionnel (Resend) — clé API et destinataire des notifications
+EMAIL_PROVIDER_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
+CLUB_NOTIFICATION_EMAIL=contact@vendemian-tambourin.fr
+EMAIL_FROM=Site Vendémian Tambourin <site@vendemian-tambourin.fr>
