@@ -1,8 +1,8 @@
 // Liste fermée des sujets du formulaire de contact (T043a, FR-023, research.md §17) :
 // source unique pour le schéma Zod, le <select> et l'objet de l'email.
-import { CONTACT_SUBJECTS, type ContactSubject } from "../../drizzle/schema";
-
-export { CONTACT_SUBJECTS, type ContactSubject };
+// Sans dépendance serveur : importable par le formulaire client.
+export const CONTACT_SUBJECTS = ["adhesion", "partenariat", "galerie", "presse", "autre"] as const;
+export type ContactSubject = (typeof CONTACT_SUBJECTS)[number];
 
 export const CONTACT_SUBJECT_LABELS: Record<ContactSubject, string> = {
   adhesion: "Adhésion / essai",

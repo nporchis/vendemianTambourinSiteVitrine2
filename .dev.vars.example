@@ -6,7 +6,9 @@
 TURNSTILE_SITE_KEY=1x00000000000000000000AA
 TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 
-# Provider email transactionnel (Resend) — clé API et destinataire des notifications
-EMAIL_PROVIDER_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
+# Provider email transactionnel (Resend) — clé API et destinataire des notifications.
+# En local, "dev-log" journalise l'email dans la console au lieu de l'envoyer ; une clé
+# invalide (ex. re_invalide) simule un échec d'envoi (502, FR-017).
+EMAIL_PROVIDER_API_KEY=dev-log
 CLUB_NOTIFICATION_EMAIL=contact@vendemian-tambourin.fr
 EMAIL_FROM=Site Vendémian Tambourin <site@vendemian-tambourin.fr>

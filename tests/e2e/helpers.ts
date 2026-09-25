@@ -3,6 +3,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -60,8 +61,10 @@ export async function expectNoHorizontalOverflow(page: Page) {
 export async function expectResponsiveLayout(page: Page, path: string) {
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
-    await page.goto(path);
+    await page.goto(path, { waitUntil: "load" });
     await expect(page.locator("h1").first()).toBeVisible();
+    // Laisse le temps aux éléments rendus après chargement (widget Turnstile, images).
+    await page.waitForTimeout(1_500);
     await expectNoHorizontalOverflow(page);
     if (viewport.width >= 1024) {
       await expect(
@@ -70,5 +73,22 @@ export async function expectResponsiveLayout(page: Page, path: string) {
     } else {
       await expect(page.getByRole("button", { name: "Ouvrir le menu" })).toBeVisible();
     }
+  }
+}
+
+/**
+ * Remet à zéro le compteur de limite de fréquence du dev local : sans en-tête
+ * CF-Connecting-IP, toutes les requêtes partagent l'« IP » `unknown`.
+ */
+export function resetRateLimit() {
+  const key = `contact:${createHash("sha256").update("unknown").digest("hex")}`;
+  try {
+    execFileSync(
+      "npx",
+      ["wrangler", "kv", "key", "delete", "--binding", "RATE_LIMIT_KV", "--local", key],
+      { stdio: "pipe", shell: process.platform === "win32" },
+    );
+  } catch {
+    // clé absente : rien à faire
   }
 }

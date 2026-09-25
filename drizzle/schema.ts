@@ -3,6 +3,7 @@
 // tableaux en texte JSON.
 import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { CONTACT_SUBJECTS } from "../src/lib/contact-subjects";
 
 const uuid = () =>
   text("id")
@@ -94,8 +95,6 @@ export const partner = sqliteTable("partner", {
   sortOrder: integer("sort_order").notNull(),
 });
 
-export const CONTACT_SUBJECTS = ["adhesion", "partenariat", "galerie", "presse", "autre"] as const;
-export type ContactSubject = (typeof CONTACT_SUBJECTS)[number];
 
 export const contactRequest = sqliteTable(
   "contact_request",

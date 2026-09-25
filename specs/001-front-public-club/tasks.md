@@ -199,10 +199,10 @@ vérifier le message d'état vide
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Test E2E Playwright `tests/e2e/calendrier.spec.ts` : compétition à venir
+- [X] T022 [P] [US2] Test E2E Playwright `tests/e2e/calendrier.spec.ts` : compétition à venir
       visible avec nom/date/lieu ; compétition passée avec `result` affiche son résultat ; table
       vidée → message d'état vide explicite (FR-011) ; audit `@axe-core/playwright`
-- [ ] T023 [P] [US2] Test unitaire Vitest `tests/unit/competition-status.test.ts` : la fonction de
+- [X] T023 [P] [US2] Test unitaire Vitest `tests/unit/competition-status.test.ts` : la fonction de
       dérivation de statut retourne `upcoming` si `date` ≥ maintenant, `past` sinon ; `result` n'est
       exposé côté affichage que si `status = past`
 
@@ -210,16 +210,16 @@ vérifier le message d'état vide
 
 - [X] T024 [P] [US2] Ajouter le schéma Zod `CompetitionSchema` dans `src/lib/validation.ts` :
       `name`, `date`, `location` requis et non vides ; `description` et `result` optionnels
-- [ ] T025 [US2] Implémenter la fonction de dérivation de statut et de tri dans
+- [X] T025 [US2] Implémenter la fonction de dérivation de statut et de tri dans
       `src/lib/competitions.ts` (`status: 'upcoming' | 'past'` dérivé de `date` vs. date courante,
       non stocké ; tri par date décroissante)
-- [ ] T026 [US2] Implémenter `GET /api/competitions` dans `src/app/api/competitions/route.ts` :
+- [X] T026 [US2] Implémenter `GET /api/competitions` dans `src/app/api/competitions/route.ts` :
       liste les compétitions via `src/lib/db.ts` et `src/lib/competitions.ts`, retourne `[]` si
       aucune compétition (FR-011)
-- [ ] T027 [P] [US2] Créer `src/components/competitions/CompetitionList.tsx` (Server Component) :
+- [X] T027 [P] [US2] Créer `src/components/competitions/CompetitionList.tsx` (Server Component) :
       affiche les compétitions à venir séparément des passées, résultat affiché uniquement si
       `status = past` et `result` non nul (FR-016)
-- [ ] T028 [US2] Implémenter `src/app/calendrier/page.tsx` (FR-003, Server Component) : consomme
+- [X] T028 [US2] Implémenter `src/app/calendrier/page.tsx` (FR-003, Server Component) : consomme
       `GET /api/competitions`, `PageHero` + sections numérotées « À venir » / « Derniers résultats »,
       utilise `CompetitionList`, rendu dynamique (`research.md` §20, FR-008, FR-009), affiche un message d'état vide explicite
       si la liste est vide (FR-011)
@@ -240,7 +240,7 @@ par catégorie, faire défiler jusqu'à charger une page suivante automatiquemen
 
 ### Tests for User Story 3
 
-- [ ] T029 [P] [US3] Test E2E Playwright `tests/e2e/galerie.spec.ts` : photos affichées avec
+- [X] T029 [P] [US3] Test E2E Playwright `tests/e2e/galerie.spec.ts` : photos affichées avec
       lazy-loading (vérifier le comportement `next/image` / throttling réseau) ; filtre par
       catégorie ne montre que les photos de la catégorie sélectionnée (FR-015) ; défilement jusqu'au
       bas des photos déjà affichées déclenche le chargement automatique de la page suivante, sans
@@ -252,31 +252,31 @@ par catégorie, faire défiler jusqu'à charger une page suivante automatiquemen
 - [X] T030 [P] [US3] Ajouter les schémas Zod `PhotoCategorySchema` (`name` requis, unique) et
       `PhotoSchema` (`imageUrl` requis, `categoryId` requis, `caption` et `takenOrEventDate`
       optionnels) dans `src/lib/validation.ts`
-- [ ] T031 [US3] Implémenter `GET /api/photo-categories` dans
+- [X] T031 [US3] Implémenter `GET /api/photo-categories` dans
       `src/app/api/photo-categories/route.ts`
 - [X] T031a [P] [US3] Implémenter les helpers de curseur opaque dans `src/lib/pagination.ts` :
       `encodeCursor({createdAt, id})` / `decodeCursor(string)` en base64, tri de référence
       `createdAt DESC, id DESC` (FR-018, `research.md` §9)
-- [ ] T032 [US3] Implémenter `GET /api/photos` dans `src/app/api/photos/route.ts` (dépend de T031a)
+- [X] T032 [US3] Implémenter `GET /api/photos` dans `src/app/api/photos/route.ts` (dépend de T031a)
       avec filtrage optionnel par le paramètre de requête `categoryId`, pagination par curseur
       (`cursor`, `limit` — défaut et max 12) triée `created_at DESC, id DESC`, retourne
       `{ items: [...], nextCursor }` avec `items: []` et `nextCursor: null` si aucune photo (FR-011,
       FR-018, voir `contracts/api.md`)
-- [ ] T033 [P] [US3] Configurer un loader d'image personnalisé compatible Cloudflare (Images/R2)
+- [X] T033 [P] [US3] Configurer un loader d'image personnalisé compatible Cloudflare (Images/R2)
       pour `next/image` dans `next.config.ts` (l'optimisation d'image native n'étant pas disponible
       telle quelle sur Workers, cf. `research.md` §8)
-- [ ] T034 [P] [US3] Créer `src/components/gallery/GalleryGrid.tsx` (Server Component) : grille de
+- [X] T034 [P] [US3] Créer `src/components/gallery/GalleryGrid.tsx` (Server Component) : grille de
       photos utilisant `next/image` pour le lazy-loading, groupées visuellement par catégorie,
       reçoit la première page (`items`, `nextCursor`) en props
-- [ ] T034a [P] [US3] Créer `src/components/gallery/InfiniteScrollTrigger.tsx` (`"use client"`,
+- [X] T034a [P] [US3] Créer `src/components/gallery/InfiniteScrollTrigger.tsx` (`"use client"`,
       Client Component React) : sentinelle observée via `IntersectionObserver`, déclenche
       automatiquement l'appel `GET /api/photos?cursor=...` (page suivante) quand elle entre dans le
       viewport, ajoute les photos reçues à la grille, cesse tout appel quand `nextCursor: null`,
       sans action de clic (FR-018)
-- [ ] T035 [P] [US3] Créer `src/components/gallery/CategoryFilter.tsx` (`"use client"`, Client
+- [X] T035 [P] [US3] Créer `src/components/gallery/CategoryFilter.tsx` (`"use client"`, Client
       Component React) : filtre les photos affichées par `categoryId` sans rechargement de page
       (FR-015)
-- [ ] T036 [US3] Implémenter `src/app/galerie/page.tsx` (FR-004, Server Component) : consomme `GET
+- [X] T036 [US3] Implémenter `src/app/galerie/page.tsx` (FR-004, Server Component) : consomme `GET
       /api/photo-categories` et la première page de `GET /api/photos`, intègre `PageHero`,
       `GalleryGrid`, `InfiniteScrollTrigger` et `CategoryFilter`, affiche un état vide explicite si
       aucune photo (FR-011) ; bloc « Tu as pris des photos ? » vers `/contact?sujet=galerie` (FR-023) ;
@@ -304,32 +304,32 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
 
 ### Tests for User Story 4
 
-- [ ] T037 [P] [US4] Test E2E Playwright `tests/e2e/partenaires.spec.ts` : partenaires groupés
+- [X] T037 [P] [US4] Test E2E Playwright `tests/e2e/partenaires.spec.ts` : partenaires groupés
       principal → soutien → institutionnel, niveau vide non affiché, site ouvert dans un nouvel
       onglet (`target="_blank"`), partenaire sans site non cliquable ; « Devenir partenaire » mène à
       `/contact?sujet=partenariat` avec le sujet présélectionné (FR-005, FR-023) ; audit
       `@axe-core/playwright`
-- [ ] T038 [P] [US4] Test E2E Playwright `tests/e2e/contact.spec.ts` : soumission valide (prénom,
+- [X] T038 [P] [US4] Test E2E Playwright `tests/e2e/contact.spec.ts` : soumission valide (prénom,
       nom, email, sujet, message) + challenge Turnstile → message de confirmation ; `?sujet=adhesion`,
       `?sujet=galerie` présélectionnent le bon sujet, `?sujet=inconnu` n'en présélectionne aucun
       (FR-023) ; soumission avec email invalide ou champ requis manquant
       → message d'erreur explicite, autres champs conservés ; mention RGPD visible avant envoi et
       son lien mène vers `/politique-de-confidentialite` (FR-019) ; audit `@axe-core/playwright`
-- [ ] T038a [P] [US4] Test E2E Playwright `tests/e2e/politique-confidentialite.spec.ts` : page
+- [X] T038a [P] [US4] Test E2E Playwright `tests/e2e/politique-confidentialite.spec.ts` : page
       accessible sans authentification, contenu présent (usage et durée de conservation des données,
       FR-019) ; audit `@axe-core/playwright`
-- [ ] T039 [P] [US4] Test d'intégration Vitest `tests/integration/contact-api.test.ts` :
+- [X] T039 [P] [US4] Test d'intégration Vitest `tests/integration/contact-api.test.ts` :
       `POST /api/contact` contre une D1 de test — 201 si données valides + Turnstile vérifié, avec
       `notification_sent_at` renseigné et `subject` enregistré ; 400 si champ requis manquant/email
       invalide/sujet hors liste ; 403 si
       Turnstile invalide ; 502 si l'envoi email échoue (provider mocké en erreur) — la ligne
       `contact_request` reste créée avec `notification_sent_at = null` (FR-017) ; vérifie que la
       ligne `contact_request` créée a `purge_at = submitted_at + 12 mois`
-- [ ] T039a [P] [US4] Test d'intégration Vitest `tests/integration/contact-rate-limit.test.ts` :
+- [X] T039a [P] [US4] Test d'intégration Vitest `tests/integration/contact-rate-limit.test.ts` :
       `POST /api/contact` depuis la même IP simulée (en-tête `CF-Connecting-IP`) au-delà du seuil
       configuré (5/heure) retourne 429 sur la requête excédentaire ; une IP différente n'est pas
       affectée par le compteur de la première (FR-020)
-- [ ] T040 [P] [US4] Test unitaire Vitest `tests/unit/purge-contact-requests.test.ts` : la logique
+- [X] T040 [P] [US4] Test unitaire Vitest `tests/unit/purge-contact-requests.test.ts` : la logique
       de purge supprime uniquement les `contact_request` dont `purge_at <= now`
 
 ### Implementation for User Story 4
@@ -337,9 +337,9 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
 - [X] T041 [P] [US4] Ajouter le schéma Zod `PartnerSchema` (`name` et `level` requis, `level` ∈
       `principal | soutien | institutionnel`, `websiteUrl` et `logoUrl` URL optionnelles,
       `description` ≤ 120 caractères optionnelle) dans `src/lib/validation.ts`
-- [ ] T042 [US4] Implémenter `GET /api/partners` dans `src/app/api/partners/route.ts` : tri par niveau
+- [X] T042 [US4] Implémenter `GET /api/partners` dans `src/app/api/partners/route.ts` : tri par niveau
       (principal, soutien, institutionnel) puis `sort_order`, `[]` si aucun partenaire
-- [ ] T043 [US4] Créer `src/components/partners/PartnerTiles.tsx` et implémenter
+- [X] T043 [US4] Créer `src/components/partners/PartnerTiles.tsx` et implémenter
       `src/app/partenaires/page.tsx` (FR-005, Server Component) : `PageHero`, un groupe par niveau non
       vide (tuiles jaunes pour « principal », tuiles blanches sinon), logo via `next/image` si
       présent, site ouvert avec `target="_blank" rel="noopener noreferrer"`, état vide explicite si
@@ -363,7 +363,7 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
       hacher l'IP (`CF-Connecting-IP`) en SHA-256, incrémenter le compteur `RATE_LIMIT_KV` (clé
       `contact:{ipHash}`, TTL 3600s), retourner si la requête courante dépasse le seuil (5 par
       défaut, ajustable) (FR-020, `research.md` §10)
-- [ ] T047 [US4] Implémenter `POST /api/contact` dans `src/app/api/contact/route.ts` (dépend de
+- [X] T047 [US4] Implémenter `POST /api/contact` dans `src/app/api/contact/route.ts` (dépend de
       T044, T045, T046, T046a) dans cet ordre : (1) vérifier la limite de fréquence via
       `src/lib/rate-limit.ts` (429 si dépassée, FR-020), (2) valider les champs (400 si invalide,
       format `{errors: {...}}`), (3) vérifier `captchaToken` via `src/lib/turnstile.ts` (403 si
@@ -371,19 +371,19 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
       envoyer l'email via `src/lib/email.ts` en l'attendant — si l'envoi échoue, renseigner
       `notificationSentAt = null` et retourner `502` sans annuler l'insertion D1 ; si l'envoi
       réussit, renseigner `notificationSentAt = now()` et retourner `201` avec confirmation (FR-017)
-- [ ] T047a [P] [US4] Implémenter `src/app/politique-de-confidentialite/page.tsx` (FR-019, Server
+- [X] T047a [P] [US4] Implémenter `src/app/politique-de-confidentialite/page.tsx` (FR-019, Server
       Component) : contenu statique présentant l'usage et la durée de conservation (12 mois, FR-014)
       des données du formulaire de contact, ainsi que l'affichage des membres du bureau (prénom +
       initiale, avec leur accord) et la manière de demander leur retrait
-- [ ] T048 [P] [US4] Créer `src/components/contact/RgpdNotice.tsx` (Server Component) : mention
+- [X] T048 [P] [US4] Créer `src/components/contact/RgpdNotice.tsx` (Server Component) : mention
       d'information RGPD affichée à la saisie du formulaire (FR-013), incluant un lien vers
       `/politique-de-confidentialite` (FR-019)
-- [ ] T049 [US4] Créer `src/components/contact/ContactForm.tsx` (`"use client"`, Client Component
+- [X] T049 [US4] Créer `src/components/contact/ContactForm.tsx` (`"use client"`, Client Component
       React) : champs prénom/nom/email/sujet (`<select>` alimenté par `src/lib/contact-subjects.ts`,
       valeur initiale reçue en prop)/message, widget Turnstile, intègre `RgpdNotice`, validation côté
       client avant envoi, affichage des erreurs serveur sans perte des champs déjà saisis (FR-007,
       FR-012, Edge Case)
-- [ ] T050 [US4] Implémenter `src/app/contact/page.tsx` (FR-006, FR-023, Server Component) : lit
+- [X] T050 [US4] Implémenter `src/app/contact/page.tsx` (FR-006, FR-023, Server Component) : lit
       `searchParams.sujet` via `parseSubjectParam` pour présélectionner le sujet, `PageHero`, carte
       des coordonnées du club, intègre `ContactForm` et `RgpdNotice`, affiche la confirmation après succès (`201`) ou un message
       d'erreur explicite en cas de `429` (limite de fréquence, FR-020) ou `502` (échec d'envoi email,
@@ -400,27 +400,27 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
 
 **Purpose**: Validation transverse de performance, accessibilité et conformité à la constitution
 
-- [ ] T052 [P] Exécuter `npm run test` (Vitest) et `npm run test:e2e` (Playwright) sur l'ensemble
+- [X] T052 [P] Exécuter `npm run test` (Vitest) et `npm run test:e2e` (Playwright) sur l'ensemble
       des suites et corriger les échecs
 - [ ] T053 [P] Exécuter l'audit Lighthouse mobile (`npx lighthouse ... --preset=mobile`) sur les 9
       pages publiques (via `npm run preview`) et vérifier les seuils "Good" (LCP < 2.5s, INP <
       200ms, CLS < 0.1, SC-002)
-- [ ] T053a [P] Ajouter des assertions de layout responsive dans les suites Playwright existantes
+- [X] T053a [P] Ajouter des assertions de layout responsive dans les suites Playwright existantes
       (`tests/e2e/discover-club.spec.ts`, `calendrier.spec.ts`, `galerie.spec.ts`,
       `partenaires.spec.ts`, `contact.spec.ts`, `politique-confidentialite.spec.ts`,
       `not-found.spec.ts`) sur 3 viewports (mobile 375px, tablette 768px, desktop 1280px) : pas de
       débordement horizontal, navigation utilisable, contenu principal visible sans perte de
       fonctionnalité (FR-010, SC-004)
-- [ ] T054 [P] Vérifier l'absence de violations critiques WCAG AA (rapport axe-core agrégé des
+- [X] T054 [P] Vérifier l'absence de violations critiques WCAG AA (rapport axe-core agrégé des
       suites E2E) sur les 9 pages publiques
 - [ ] T055 Vérifier qu'aucun secret n'est committé (`.dev.vars` ignoré par git, secrets déclarés
       via `wrangler secret` en production) — principe I de la constitution
 - [ ] T056 Exécuter l'ensemble des scénarios de `quickstart.md` manuellement via `npm run preview`
       (`wrangler pages dev` après build OpenNext) et confirmer chaque résultat attendu
-- [ ] T056a [P] Test E2E Playwright `tests/e2e/not-found.spec.ts` : une URL inexistante affiche la
+- [X] T056a [P] Test E2E Playwright `tests/e2e/not-found.spec.ts` : une URL inexistante affiche la
       page 404 personnalisée dans le style du site, avec un lien de retour vers l'accueil (FR-021) ;
       audit `@axe-core/playwright`
-- [ ] T056b [P] Implémenter `src/app/not-found.tsx` (FR-021, Server Component, convention Next.js
+- [X] T056b [P] Implémenter `src/app/not-found.tsx` (FR-021, Server Component, convention Next.js
       App Router) : réutilise `Header`/`Footer`, message explicite « page introuvable » et lien de
       retour vers `/`
 

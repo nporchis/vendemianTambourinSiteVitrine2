@@ -3,11 +3,11 @@
 import { z } from "zod";
 import { PARTNER_LEVELS } from "../../drizzle/schema";
 import { CONTACT_SUBJECTS } from "./contact-subjects";
+import { EMAIL_PATTERN } from "./email-pattern";
+
+export { EMAIL_PATTERN };
 
 // ------------------------------------------------------------------ Helpers réutilisables
-
-/** Format email RFC 5322 simplifié : partie locale, @, domaine avec au moins un point. */
-export const EMAIL_PATTERN = /^[^\s@<>()[\],;:"]+@[^\s@<>()[\],;:"]+\.[^\s@<>()[\],;:".]{2,}$/;
 
 export const requiredString = (message = "Ce champ est obligatoire.") =>
   z.string({ error: message }).trim().min(1, message);
