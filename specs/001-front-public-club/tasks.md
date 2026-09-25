@@ -413,7 +413,7 @@ persistée ; ouvrir la page politique de confidentialité depuis le lien de la m
       fonctionnalité (FR-010, SC-004)
 - [X] T054 [P] Vérifier l'absence de violations critiques WCAG AA (rapport axe-core agrégé des
       suites E2E) sur les 9 pages publiques
-- [ ] T055 Vérifier qu'aucun secret n'est committé (`.dev.vars` ignoré par git, secrets déclarés
+- [X] T055 Vérifier qu'aucun secret n'est committé (`.dev.vars` ignoré par git, secrets déclarés
       via `wrangler secret` en production) — principe I de la constitution
 - [ ] T056 Exécuter l'ensemble des scénarios de `quickstart.md` manuellement via `npm run preview`
       (`wrangler pages dev` après build OpenNext) et confirmer chaque résultat attendu
@@ -540,3 +540,40 @@ tests indépendants, puis Polish commun.
 - S'arrêter à chaque checkpoint pour valider la story indépendamment
 - Éviter : tâches vagues, conflits sur un même fichier, dépendances inter-stories qui casseraient
   l'indépendance
+
+---
+
+## Notes d'implémentation (2026-09-25)
+
+**Reste ouvert** (nécessite le compte Cloudflare / Resend du club) :
+
+- **T053** — Audit Lighthouse mobile exécuté en local sur le build Workers (`npm run preview`),
+  8 pages (la 404 n'est pas auditable : Lighthouse refuse un document en statut 404).
+  Accessibilité 100 et CLS ≈ 0 partout ; LCP 2,0–2,6 s selon les passes (une mesure isolée à
+  3,1 s sur l'accueil), mesure locale bruitée, sans cache edge. À refaire sur le site déployé
+  (PageSpeed Insights) avant de cocher.
+- **T056** — Scénarios du quickstart vérifiés sur le build Workers local : suite E2E complète
+  (34 tests) contre `wrangler dev`, limite de fréquence (429 au 6ᵉ envoi), purge déclenchée par le
+  Cron (`/cdn-cgi/handler/scheduled`), rendu sans redéploiement (SC-005). Non vérifiés : réception
+  réelle de l'email par le club (clé Resend requise) et 502 sur le Worker avec une clé invalide
+  (couvert par le test d'intégration T039).
+
+**Écarts assumés par rapport au plan** :
+
+- Les pages lisent la base via les mêmes fonctions que les Route Handlers (`src/lib/*.ts`) au lieu
+  d'appeler leur propre API en HTTP (aller-retour inutile sur Workers) ; le contrat de
+  `contracts/api.md` reste servi par `src/app/api/**`.
+- `wrangler d1 migrations apply` remplace `drizzle-kit migrate` (T009) : Drizzle Kit génère le SQL,
+  Wrangler l'applique à D1 en local comme à distance (scripts `db:migrate:*`).
+- T033 : pas de loader personnalisé — OpenNext route `next/image` vers le binding Cloudflare Images
+  `IMAGES` (wrangler.toml).
+- T034 : la grille est un composant de présentation sans état rendu dans `GalleryBrowser`
+  (client), qui partage filtre, pages chargées et curseur ; la première page reste dans le HTML
+  serveur.
+- T005 : ESLint en configuration « flat » (`eslint.config.mjs`) + `eslint-config-prettier`.
+- Navigation en ligne à partir de 1024 px (menu mobile en dessous) : les 7 entrées débordent à
+  768 px.
+- Carte « Prochain match » : pas de bloc « Vendémian vs adversaire » — le modèle de données n'a pas
+  de champ adversaire (à ajouter avec le backoffice si souhaité).
+- `EMAIL_FROM` ajouté aux variables (expéditeur requis par Resend) ; `EMAIL_PROVIDER_API_KEY=dev-log`
+  journalise l'email en local.

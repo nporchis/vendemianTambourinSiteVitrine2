@@ -27,7 +27,7 @@ export default async function HomePage() {
           src={fronton}
           alt=""
           fill
-          priority
+          preload
           sizes="100vw"
           placeholder="blur"
           className="object-cover object-[center_30%]"

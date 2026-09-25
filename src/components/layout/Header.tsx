@@ -27,7 +27,14 @@ export function Header({ current, variant = "solid" }: HeaderProps) {
           aria-label="Vendémian Tambourin — accueil"
           className="flex shrink-0 items-center"
         >
-          <Image src={logo} alt="" priority className="h-11 w-auto lg:h-[52px]" />
+          <Image
+            src={logo}
+            alt=""
+            width={58}
+            height={52}
+            loading="eager"
+            className="h-11 w-auto lg:h-[52px]"
+          />
         </Link>
 
         <nav aria-label="Navigation principale" className="hidden lg:block">

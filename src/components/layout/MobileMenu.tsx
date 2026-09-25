@@ -85,7 +85,7 @@ export function MobileMenu({ current, overlay }: { current: NavHref | null; over
               onClick={() => setOpen(false)}
               className="flex items-center"
             >
-              <Image src={logo} alt="" className="h-11 w-auto" />
+              <Image src={logo} alt="" width={49} height={44} className="h-11 w-auto" />
             </Link>
             <button
               ref={closeButtonRef}

@@ -9,16 +9,23 @@ type GalleryGridProps = {
   categories: PhotoCategoryDto[];
   /** Nombre de tuiles squelettes à afficher pendant un chargement. */
   loadingCount?: number;
+  /** Premières photos chargées sans attendre (première rangée, candidate au LCP). */
+  eagerCount?: number;
 };
 
 export const galleryGridClass = "grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4";
 
-export function GalleryGrid({ photos, categories, loadingCount = 0 }: GalleryGridProps) {
+export function GalleryGrid({
+  photos,
+  categories,
+  loadingCount = 0,
+  eagerCount = 0,
+}: GalleryGridProps) {
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
 
   return (
     <ul className={galleryGridClass}>
-      {photos.map((photo) => {
+      {photos.map((photo, index) => {
         const category = categoryName.get(photo.categoryId);
         return (
           <li key={photo.id}>
@@ -28,6 +35,8 @@ export function GalleryGrid({ photos, categories, loadingCount = 0 }: GalleryGri
                   src={photo.imageUrl}
                   alt={photo.caption ?? (category ? `Photo — ${category}` : "Photo du club")}
                   fill
+                  loading={index < eagerCount ? "eager" : "lazy"}
+                  fetchPriority={index === 0 && eagerCount > 0 ? "high" : undefined}
                   sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
                   className="object-cover"
                 />

@@ -30,7 +30,7 @@ export function NextMatch({ competition }: { competition: NextCompetition }) {
 
       <div className="vt-on-dark flex flex-col justify-between gap-6 bg-vt-ink p-6 text-vt-cream md:p-10">
         <div className="flex items-center gap-5">
-          <Image src={logo} alt="" className="h-[72px] w-auto shrink-0" />
+          <Image src={logo} alt="" width={80} height={72} className="h-[72px] w-auto shrink-0" />
           <div>
             <p className="font-display text-[1.625rem] leading-none font-extrabold uppercase">
               Vendémian Tambourin

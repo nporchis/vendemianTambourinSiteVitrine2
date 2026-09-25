@@ -85,7 +85,12 @@ export function GalleryBrowser({ categories, initialPage }: GalleryBrowserProps)
           Les photos des matchs et des événements du club apparaîtront ici.
         </EmptyState>
       ) : (
-        <GalleryGrid photos={page.items} categories={categories} loadingCount={loading ? 4 : 0} />
+        <GalleryGrid
+          photos={page.items}
+          categories={categories}
+          loadingCount={loading ? 4 : 0}
+          eagerCount={4}
+        />
       )}
 
       <InfiniteScrollTrigger

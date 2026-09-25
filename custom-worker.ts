@@ -1,6 +1,8 @@
 // Point d'entrée du Worker : le handler `fetch` généré par OpenNext, complété du handler
 // `scheduled` qui exécute la purge RGPD des demandes de contact (T051, FR-014).
-// @ts-expect-error `.open-next/worker.js` est généré au build par `opennextjs-cloudflare build`
+// `.open-next/worker.js` est généré au build par `opennextjs-cloudflare build` : absent avant.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import { default as handler } from "./.open-next/worker.js";
 import { purgeExpiredContactRequests } from "./src/scheduled/purge-contact-requests";
 
