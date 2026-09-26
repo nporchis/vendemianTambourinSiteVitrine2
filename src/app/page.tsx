@@ -22,7 +22,7 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero plein écran : photo du fronton, en-tête en surimpression (§4.3) */}
-      <section className="vt-hero relative flex min-h-[90vh] flex-col overflow-hidden md:min-h-[700px] lg:min-h-[860px]">
+      <section className="vt-hero relative flex min-h-dvh flex-col overflow-hidden">
         <Image
           src={fronton}
           alt=""

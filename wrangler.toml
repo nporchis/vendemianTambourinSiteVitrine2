@@ -16,14 +16,14 @@ binding = "IMAGES"
 [[d1_databases]]
 binding = "DB"
 database_name = "vt-site-db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "b6330789-7303-4f80-adc1-9d5a99a300fa"
 migrations_dir = "drizzle/migrations"
 
 # Limite de fréquence du formulaire de contact (FR-020) :
 # `wrangler kv namespace create RATE_LIMIT_KV`, puis reporter l'id ci-dessous.
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "00000000000000000000000000000000"
+id = "1e981f12aa1e47e8a290fd8b227c7fda"
 
 # Purge quotidienne des demandes de contact de plus de 12 mois (FR-014, T051)
 [triggers]
