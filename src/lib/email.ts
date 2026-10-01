@@ -25,6 +25,8 @@ export type EmailConfig = {
 
 export type EmailResult = { ok: true } | { ok: false; reason: string };
 
+export type OutgoingEmail = { to: string; subject: string; text: string; replyTo?: string };
+
 export function buildNotification(request: ContactNotification) {
   const label = CONTACT_SUBJECT_LABELS[request.subject];
   return {
@@ -41,17 +43,15 @@ export function buildNotification(request: ContactNotification) {
   };
 }
 
-export async function sendContactNotification(
-  request: ContactNotification,
-  config: EmailConfig,
-): Promise<EmailResult> {
-  const { subject, text } = buildNotification(request);
+/** Envoi générique (T008), réutilisé par la notification de contact et le reset de mot de passe. */
+export async function sendEmail(email: OutgoingEmail, config: EmailConfig): Promise<EmailResult> {
+  const { to, subject, text, replyTo } = email;
 
   if (config.apiKey === DEV_LOG_API_KEY) {
-    console.info(`[email] (dev-log) ${subject}\n${text}`);
+    console.info(`[email] (dev-log) à ${to} : ${subject}\n${text}`);
     return { ok: true };
   }
-  if (!config.apiKey || !config.to || !config.from) {
+  if (!config.apiKey || !config.from) {
     return { ok: false, reason: "configuration email incomplète" };
   }
 
@@ -64,8 +64,8 @@ export async function sendContactNotification(
       },
       body: JSON.stringify({
         from: config.from,
-        to: [config.to],
-        reply_to: request.email,
+        to: [to],
+        ...(replyTo ? { reply_to: replyTo } : {}),
         subject,
         text,
       }),
@@ -78,4 +78,13 @@ export async function sendContactNotification(
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) };
   }
+}
+
+export async function sendContactNotification(
+  request: ContactNotification,
+  config: EmailConfig,
+): Promise<EmailResult> {
+  if (!config.to) return { ok: false, reason: "configuration email incomplète" };
+  const { subject, text } = buildNotification(request);
+  return sendEmail({ to: config.to, subject, text, replyTo: request.email }, config);
 }

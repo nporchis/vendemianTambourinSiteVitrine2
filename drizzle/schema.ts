@@ -112,6 +112,71 @@ export const contactRequest = sqliteTable(
     purgeAt: integer("purge_at", { mode: "timestamp_ms" }).notNull(),
     // null si l'envoi de l'email de notification a échoué (FR-017).
     notificationSentAt: integer("notification_sent_at", { mode: "timestamp_ms" }),
+    // null = non traitée (FR-014, feature 002).
+    processedAt: integer("processed_at", { mode: "timestamp_ms" }),
   },
   (t) => [index("contact_request_purge_at_idx").on(t.purgeAt)],
 );
+
+// ------------------------------------------------------------------ Backoffice (feature 002)
+
+export const admin = sqliteTable("admin", {
+  id: uuid(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(cast(unixepoch('subsec') * 1000 as integer))`),
+});
+
+export const adminSession = sqliteTable(
+  "admin_session",
+  {
+    id: uuid(),
+    adminId: text("admin_id")
+      .notNull()
+      .references(() => admin.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast(unixepoch('subsec') * 1000 as integer))`),
+  },
+  (t) => [index("admin_session_admin_id_idx").on(t.adminId)],
+);
+
+export const passwordResetToken = sqliteTable(
+  "password_reset_token",
+  {
+    id: uuid(),
+    adminId: text("admin_id")
+      .notNull()
+      .references(() => admin.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    usedAt: integer("used_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [index("password_reset_token_admin_id_idx").on(t.adminId)],
+);
+
+export const ADMIN_AUDIT_ACTIONS = [
+  "admin_created",
+  "admin_updated",
+  "admin_deactivated",
+  "admin_reactivated",
+  "admin_deleted",
+] as const;
+export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number];
+
+// `actorAdminId`/`targetAdminId` passent à `null` (`ON DELETE SET NULL`) si le compte
+// correspondant est supprimé : le journal reste consultable au-delà de la suppression (append-only).
+export const adminAuditLog = sqliteTable("admin_audit_log", {
+  id: uuid(),
+  actorAdminId: text("actor_admin_id").references(() => admin.id, { onDelete: "set null" }),
+  action: text("action", { enum: ADMIN_AUDIT_ACTIONS }).notNull(),
+  targetAdminId: text("target_admin_id").references(() => admin.id, { onDelete: "set null" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(cast(unixepoch('subsec') * 1000 as integer))`),
+});

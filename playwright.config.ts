@@ -8,12 +8,17 @@ const baseURL = externalBaseURL ?? "http://localhost:3000";
 
 export default defineConfig({
   testDir: "tests/e2e",
+  // Précompile les routes /admin/** avant le premier test (voir global-setup.ts) : inutile et
+  // sans objet contre `npm run preview` (build de production, pas de compilation à la volée).
+  globalSetup: externalBaseURL ? undefined : "./tests/e2e/global-setup.ts",
   // Les suites modifient la base locale partagée (états vides) : exécution séquentielle.
   workers: 1,
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
-  timeout: 60_000,
+  // 120s (plutôt que 60s) : les pages `/admin/**` (feature 002) sont nombreuses et lourdes en
+  // client components, dont la première compilation à la volée par `next dev` peut dépasser 60s.
+  timeout: 120_000,
   use: {
     baseURL,
     trace: "retain-on-failure",

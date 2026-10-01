@@ -18,6 +18,18 @@ export type PhotoDto = {
 
 export type PhotoPage = { items: PhotoDto[]; nextCursor: string | null };
 
+/** Toutes les photos, non paginées : utilisé par le backoffice (T032), pas par le front public. */
+export async function listAllPhotos(db: Db): Promise<PhotoDto[]> {
+  const rows = await db.select().from(photo).orderBy(desc(photo.createdAt), desc(photo.id));
+  return rows.map((row) => ({
+    id: row.id,
+    imageUrl: row.imageUrl,
+    caption: row.caption ?? null,
+    categoryId: row.categoryId,
+    takenOrEventDate: row.takenOrEventDate?.toISOString() ?? null,
+  }));
+}
+
 export async function listPhotoCategories(db: Db): Promise<PhotoCategoryDto[]> {
   return db
     .select({ id: photoCategory.id, name: photoCategory.name })

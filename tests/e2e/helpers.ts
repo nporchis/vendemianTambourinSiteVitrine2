@@ -76,6 +76,54 @@ export async function expectResponsiveLayout(page: Page, path: string) {
   }
 }
 
+export const ADMIN_EMAIL = "e2e-admin@example.fr";
+export const ADMIN_PASSWORD = "mot-de-passe-e2e-12";
+
+/**
+ * Remet à zéro le compteur de limite de connexion (5 tentatives / 15 min, T007) pour un email
+ * donné : sans cela, les nombreuses connexions successives des suites E2E backoffice (une par
+ * test, sur le même compte seedé) finissent par déclencher le blocage en cours de suite.
+ */
+export function resetLoginRateLimit(email: string) {
+  const key = `login:${createHash("sha256").update(email.trim().toLowerCase()).digest("hex")}`;
+  try {
+    execFileSync(
+      "npx",
+      ["wrangler", "kv", "key", "delete", "--binding", "RATE_LIMIT_KV", "--local", key],
+      { stdio: "pipe", shell: process.platform === "win32" },
+    );
+  } catch {
+    // clé absente : rien à faire
+  }
+}
+
+/**
+ * Crée (ou recrée) l'unique compte administrateur utilisé par les suites E2E backoffice.
+ * Purge toutes les tables admin (pas seulement la ligne `ADMIN_EMAIL`) : un test précédent qui
+ * échoue avant d'avoir nettoyé son propre compte créé (ex. un collègue laissé actif) ne doit
+ * jamais fausser la garde « dernier compte actif » du test suivant.
+ */
+export function seedAdmin() {
+  execSql(
+    "DELETE FROM admin_session; DELETE FROM admin_audit_log; DELETE FROM password_reset_token; DELETE FROM admin;",
+  );
+  resetLoginRateLimit(ADMIN_EMAIL);
+  execFileSync(
+    "npx",
+    ["tsx", "scripts/seed-admin.ts", `--email=${ADMIN_EMAIL}`, `--password=${ADMIN_PASSWORD}`],
+    { stdio: "pipe", shell: process.platform === "win32" },
+  );
+}
+
+/** Connexion via l'écran `/admin/login`, jusqu'au tableau de bord. */
+export async function loginAsAdmin(page: Page) {
+  await page.goto("/admin/login");
+  await page.getByLabel("Email").fill(ADMIN_EMAIL);
+  await page.getByLabel("Mot de passe").fill(ADMIN_PASSWORD);
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.waitForURL("/admin");
+}
+
 /**
  * Remet à zéro le compteur de limite de fréquence du dev local : sans en-tête
  * CF-Connecting-IP, toutes les requêtes partagent l'« IP » `unknown`.

@@ -8,6 +8,13 @@
       "when": 1790320574743,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790535497517,
+      "tag": "0001_backoffice_admin",
+      "breakpoints": true
     }
   ]
 }

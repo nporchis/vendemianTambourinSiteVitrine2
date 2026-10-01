@@ -6,7 +6,7 @@ import { contactRequest } from "../../../../drizzle/schema";
 import { jsonError, jsonOk } from "@/lib/api-response";
 import { createDb, getEnv } from "@/lib/db";
 import { sendContactNotification } from "@/lib/email";
-import { isRateLimited } from "@/lib/rate-limit";
+import { isContactRateLimited } from "@/lib/rate-limit";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { ContactRequestSchema, fieldErrors } from "@/lib/validation";
 import { computePurgeAt } from "@/scheduled/purge-contact-requests";
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
 
   // 1. Limite de fréquence par IP (FR-020), avant tout autre traitement.
-  if (await isRateLimited(env.RATE_LIMIT_KV, ip)) {
+  if (await isContactRateLimited(env.RATE_LIMIT_KV, ip)) {
     return jsonError(
       { rateLimit: "Trop de demandes envoyées récemment, merci de réessayer plus tard." },
       429,

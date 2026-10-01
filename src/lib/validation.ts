@@ -73,6 +73,20 @@ export const PartnerSchema = z.object({
   description: z.string().max(120, "120 caractères au plus.").nullish(),
 });
 
+// ------------------------------------------------------------------ Comptes administrateur
+
+export const PASSWORD_MIN_LENGTH = 12;
+
+export const passwordString = (message = `Le mot de passe doit contenir au moins ${PASSWORD_MIN_LENGTH} caractères.`) =>
+  requiredString(message).min(PASSWORD_MIN_LENGTH, message);
+
+export const AdminCreateSchema = z.object({ email: emailString(), password: passwordString() });
+
+export const AdminUpdateSchema = z.object({
+  active: z.boolean().optional(),
+  password: passwordString().optional(),
+});
+
 // ------------------------------------------------------------------ Formulaire de contact
 
 export const ContactRequestSchema = z.object({

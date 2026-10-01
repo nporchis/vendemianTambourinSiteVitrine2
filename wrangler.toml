@@ -25,6 +25,12 @@ migrations_dir = "drizzle/migrations"
 binding = "RATE_LIMIT_KV"
 id = "1e981f12aa1e47e8a290fd8b227c7fda"
 
+# Fichiers média téléversés depuis le backoffice (photos, logos partenaires) — servis
+# publiquement par `src/app/media/[key]/route.ts` (T001, contracts/media.md)
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "vt-site-media"
+
 # Purge quotidienne des demandes de contact de plus de 12 mois (FR-014, T051)
 [triggers]
 crons = ["0 3 * * *"]
